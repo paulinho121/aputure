@@ -1,0 +1,7 @@
+{
+  "name": "Aputure Tech Assist",
+  "description": "Sistema de gerenciamento para assistência técnica Aputure. Controle de OS, estoque, clientes e orçamentos.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
