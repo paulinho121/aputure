@@ -217,6 +217,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               unitPrice: parseFloat(item.unit_price)
             })),
             laborCost: parseFloat(o.labor_cost) || 0,
+            laborDescription: o.labor_description || '',
             shippingMethod: o.shipping_method,
             shippingCost: parseFloat(o.shipping_cost) || 0,
             discount: parseFloat(o.discount) || 0,
@@ -367,6 +368,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           entry_date: order.entryDate,
           status: order.status,
           labor_cost: order.laborCost,
+          labor_description: order.laborDescription,
           service_type: order.serviceType,
           shipping_method: order.shippingMethod,
           shipping_cost: order.shippingCost,
@@ -423,6 +425,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           accessories: updatedOrder.accessories,
           status: updatedOrder.status,
           labor_cost: updatedOrder.laborCost,
+          labor_description: updatedOrder.laborDescription,
           service_type: updatedOrder.serviceType,
           shipping_method: updatedOrder.shippingMethod,
           shipping_cost: updatedOrder.shippingCost,

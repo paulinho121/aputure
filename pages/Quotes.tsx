@@ -232,6 +232,14 @@ const Quotes = () => {
                   <td className="py-3 text-right text-slate-800 font-medium">R$ {order.laborCost.toFixed(2)}</td>
                 </tr>
               )}
+              {/* Labor Description Detail */}
+              {order.laborCost > 0 && order.laborDescription && (
+                <tr className="bg-slate-50/50">
+                  <td colSpan={4} className="py-2 text-sm text-slate-500 italic pl-4 border-l-2 border-slate-200">
+                    {order.laborDescription}
+                  </td>
+                </tr>
+              )}
               {/* Shipping Row */}
               {(order.shippingCost > 0 || order.shippingMethod) && (
                 <tr className="bg-slate-50/50">
