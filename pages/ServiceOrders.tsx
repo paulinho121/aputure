@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Search, Plus, ClipboardList, Camera, CheckSquare, Printer } from 'lucide-react';
+import { Search, Plus, ClipboardList, Camera, CheckSquare, Printer, Trash2 } from 'lucide-react';
 import { OrderStatus, ServiceOrder } from '../types';
 import ClientSearch from '../components/ClientSearch';
 
 const ServiceOrders = () => {
   const navigate = useNavigate();
-  const { orders, clients, addOrder, updateOrder } = useApp();
+  const { user, orders, clients, addOrder, updateOrder, deleteOrder } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
 
   // Modal States
@@ -286,6 +286,19 @@ const ServiceOrders = () => {
                     >
                       Detalhes
                     </button>
+                    {user?.email === 'jonathan@mcistore.com.br' && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Tem certeza que deseja excluir esta ordem de serviço? Esta ação não pode ser desfeita.')) {
+                            deleteOrder(order.id);
+                          }
+                        }}
+                        className="ml-2 text-red-500 hover:text-red-700 text-sm font-medium"
+                        title="Excluir Ordem"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               );

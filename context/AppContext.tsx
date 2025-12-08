@@ -20,6 +20,7 @@ interface AppContextType {
   orders: ServiceOrder[];
   addOrder: (order: ServiceOrder) => void;
   updateOrder: (order: ServiceOrder) => void;
+  deleteOrder: (orderId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -508,12 +509,46 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const deleteOrder = async (orderId: string) => {
+    try {
+      // Delete order items first (though cascade might handle it)
+      const { error: itemsError } = await supabase
+        .from('service_order_items')
+        .delete()
+        .eq('service_order_id', orderId);
+
+      if (itemsError) {
+        console.error('Error deleting order items:', itemsError);
+        alert('Erro ao excluir itens da ordem: ' + itemsError.message);
+        return;
+      }
+
+      // Delete the order
+      const { error: orderError } = await supabase
+        .from('service_orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (orderError) {
+        console.error('Error deleting order:', orderError);
+        alert('Erro ao excluir ordem de serviço: ' + orderError.message);
+        return;
+      }
+
+      // Update local state
+      setOrders(orders.filter(o => o.id !== orderId));
+    } catch (err) {
+      console.error('Unexpected error deleting order:', err);
+      alert('Erro inesperado ao excluir ordem de serviço');
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       user, login, signup, logout,
       parts, addPart, updatePart, refreshParts: fetchParts,
       clients, addClient, updateClient,
-      orders, addOrder, updateOrder
+      orders, addOrder, updateOrder, deleteOrder
     }}>
       {children}
     </AppContext.Provider>
