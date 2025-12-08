@@ -4,14 +4,15 @@ import { Search, Plus, User, Phone, Mail, MapPin, ArrowRight, ArrowLeft, LayoutG
 import { Client } from '../types';
 
 const Clients = () => {
-  const { clients, addClient } = useApp();
+  const { clients, addClient, updateClient } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [step, setStep] = useState(1);
   const [newClient, setNewClient] = useState<Partial<Client>>({
     name: '', document: '', email: '', phone: '',
-    zipCode: '', street: '', number: '', neighborhood: '', city: '', state: ''
+    zipCode: '', street: '', number: '', neighborhood: '', city: '', state: '', notes: ''
   });
 
   const filteredClients = clients.filter(c =>
@@ -26,25 +27,40 @@ const Clients = () => {
       return;
     }
 
-    // Construct full address for backward compatibility / display
+    // Construct full address for backward compatibility if needed, but we mostly use the structured fields now if available
     const fullAddress = `${newClient.street}, ${newClient.number} - ${newClient.neighborhood}, ${newClient.city} - ${newClient.state} (${newClient.zipCode})`;
 
-    addClient({
-      ...newClient as Client,
-      address: fullAddress, // Combine granular fields
-      id: Math.random().toString(36).substr(2, 9)
-    });
+    if (isEditing && newClient.id) {
+      updateClient({
+        ...newClient as Client,
+        address: newClient.address || fullAddress
+      });
+    } else {
+      addClient({
+        ...newClient as Client,
+        address: fullAddress,
+        id: Math.random().toString(36).substr(2, 9)
+      });
+    }
 
     closeModal();
   };
 
   const closeModal = () => {
     setShowAddModal(false);
+    setIsEditing(false);
     setStep(1);
     setNewClient({
       name: '', document: '', email: '', phone: '',
-      zipCode: '', street: '', number: '', neighborhood: '', city: '', state: ''
+      zipCode: '', street: '', number: '', neighborhood: '', city: '', state: '', notes: ''
     });
+  };
+
+  const handleEditClick = (client: Client) => {
+    setIsEditing(true);
+    setNewClient({ ...client });
+    setStep(1);
+    setShowAddModal(true);
   };
 
   return (
@@ -52,7 +68,15 @@ const Clients = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-slate-800">Clientes</h1>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            setIsEditing(false);
+            setNewClient({
+              name: '', document: '', email: '', phone: '',
+              zipCode: '', street: '', number: '', neighborhood: '', city: '', state: ''
+            });
+            setStep(1);
+            setShowAddModal(true);
+          }}
           className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm w-full sm:w-auto"
         >
           <Plus size={18} />
@@ -106,7 +130,12 @@ const Clients = () => {
                     <p className="text-sm text-slate-500 font-mono">{client.document}</p>
                   </div>
                 </div>
-                <button className="text-sm text-emerald-600 font-medium hover:underline">Detalhes</button>
+                <button
+                  onClick={() => handleEditClick(client)}
+                  className="text-sm text-emerald-600 font-medium hover:underline"
+                >
+                  Detalhes / Editar
+                </button>
               </div>
 
               <div className="space-y-2 text-sm text-slate-600">
@@ -162,9 +191,10 @@ const Clients = () => {
                   <td className="px-4 md:px-6 py-4 text-center">
                     <div className="flex justify-end flex-1">
                       <button
+                        onClick={() => handleEditClick(client)}
                         className="text-sm text-emerald-600 font-medium hover:underline"
                       >
-                        Detalhes
+                        Detalhes / Editar
                       </button>
                     </div>
                   </td>
@@ -180,7 +210,7 @@ const Clients = () => {
           <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-xl font-bold">Novo Cliente</h2>
+                <h2 className="text-xl font-bold">{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</h2>
                 <p className="text-sm text-slate-500">Etapa {step} de 2: {step === 1 ? 'Dados Pessoais' : 'Endereço e Contato'}</p>
               </div>
               <div className="flex gap-2 mb-6">
@@ -241,7 +271,6 @@ const Clients = () => {
                                   city: data.localidade,
                                   state: data.uf
                                 }));
-                                // Optional: Focus number field could be done via ref, but simplified flow is good too
                               }
                             } catch (error) {
                               console.error('Erro ao buscar CEP:', error);
@@ -301,7 +330,7 @@ const Clients = () => {
                   </button>
                 ) : (
                   <button type="submit" className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
-                    <Save size={18} /> Salvar Cliente
+                    <Save size={18} /> {isEditing ? 'Salvar Alterações' : 'Salvar Cliente'}
                   </button>
                 )}
               </div>

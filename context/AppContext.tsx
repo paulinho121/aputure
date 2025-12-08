@@ -15,6 +15,7 @@ interface AppContextType {
 
   clients: Client[];
   addClient: (client: Client) => void;
+  updateClient: (client: Client) => void;
 
   orders: ServiceOrder[];
   addOrder: (order: ServiceOrder) => void;
@@ -352,6 +353,39 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const updateClient = async (updatedClient: Client) => {
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          name: updatedClient.name,
+          document: updatedClient.document,
+          email: updatedClient.email,
+          phone: updatedClient.phone,
+          address: updatedClient.address,
+          zip_code: updatedClient.zipCode,
+          street: updatedClient.street,
+          number: updatedClient.number,
+          neighborhood: updatedClient.neighborhood,
+          city: updatedClient.city,
+          state: updatedClient.state,
+          notes: updatedClient.notes
+        })
+        .eq('id', updatedClient.id);
+
+      if (error) {
+        console.error('Error updating client:', error);
+        alert('Erro ao atualizar cliente: ' + error.message);
+        return;
+      }
+
+      await fetchClients();
+    } catch (err) {
+      console.error('Unexpected error updating client:', err);
+      alert('Erro inesperado ao atualizar cliente');
+    }
+  };
+
   const addOrder = async (order: ServiceOrder) => {
     try {
       // Insert order into database
@@ -478,7 +512,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     <AppContext.Provider value={{
       user, login, signup, logout,
       parts, addPart, updatePart, refreshParts: fetchParts,
-      clients, addClient,
+      clients, addClient, updateClient,
       orders, addOrder, updateOrder
     }}>
       {children}

@@ -10,6 +10,7 @@ const Quotes = () => {
   const [selectedOrderId, setSelectedOrderId] = useState(searchParams.get('orderId') || '');
   const [partSearch, setPartSearch] = useState('');
   const [showPartDropdown, setShowPartDropdown] = useState(false);
+  const [laborDescription, setLaborDescription] = useState(''); // Local state for optimization
 
   useEffect(() => {
     const id = searchParams.get('orderId');
@@ -89,9 +90,20 @@ const Quotes = () => {
     }
   };
 
-  const handleLaborDescriptionChange = (description: string) => {
+  // Sync local state when selectedOrder changes
+  useEffect(() => {
     if (selectedOrder) {
-      updateOrder({ ...selectedOrder, laborDescription: description });
+      setLaborDescription(selectedOrder.laborDescription || '');
+    }
+  }, [selectedOrder?.id]); // Only reset when ID changes, preventing loops if we depended on full object
+
+  const handleLaborDescriptionChange = (description: string) => {
+    setLaborDescription(description);
+  };
+
+  const handleLaborDescriptionBlur = () => {
+    if (selectedOrder && selectedOrder.laborDescription !== laborDescription) {
+      updateOrder({ ...selectedOrder, laborDescription });
     }
   };
 
@@ -565,16 +577,16 @@ const Quotes = () => {
                 </div>
 
                 {/* Labor Description */}
-                <div className="w-full mt-4">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Descrição do Serviço / Mão de Obra</label>
+                <div className="mb-8">
+                  <h3 className="font-bold text-slate-800 mb-4">Descrição do Serviço / Mão de Obra</h3>
                   <textarea
-                    rows={3}
-                    value={selectedOrder.laborDescription || ''}
-                    onChange={(e) => handleLaborDescriptionChange(e.target.value)}
+                    className="w-full h-32 p-4 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none"
                     placeholder="Descreva detalhadamente o serviço a ser realizado..."
-                    className="w-full p-2 border rounded-lg text-sm resize-none"
+                    value={laborDescription}
+                    onChange={(e) => handleLaborDescriptionChange(e.target.value)}
+                    onBlur={handleLaborDescriptionBlur}
                   />
-                  <p className="text-xs text-slate-500 mt-1">Esta descrição aparecerá no orçamento impresso</p>
+                  <p className="text-xs text-slate-400 mt-2">Esta descrição aparecerá no orçamento impresso</p>
                 </div>
 
                 <div className="w-full sm:w-48">
