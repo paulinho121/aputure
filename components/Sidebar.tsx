@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Users, Wrench, ClipboardList, LogOut, FileText, BarChart3, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Package, Users, Wrench, ClipboardList, LogOut, FileText, BarChart3, Menu, X, Database } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const Sidebar = () => {
@@ -15,6 +15,7 @@ const Sidebar = () => {
     { to: '/orders', icon: <Wrench size={20} />, label: 'Ordens de Serviço' },
     { to: '/quotes', icon: <FileText size={20} />, label: 'Orçamentos' },
     { to: '/reports', icon: <BarChart3 size={20} />, label: 'Relatórios' },
+    { to: '/maintenance', icon: <Database size={20} />, label: 'Manutenção' },
   ];
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);

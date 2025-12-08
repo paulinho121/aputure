@@ -214,6 +214,7 @@ const Quotes = () => {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b-2 border-slate-100">
+                <th className="text-left py-3 text-slate-600 font-bold">Código</th>
                 <th className="text-left py-3 text-slate-600 font-bold">Descrição</th>
                 <th className="text-right py-3 text-slate-600 font-bold">Qtd</th>
                 <th className="text-right py-3 text-slate-600 font-bold">Unitário</th>
@@ -225,6 +226,7 @@ const Quotes = () => {
                 const part = parts.find((p: any) => p.id === item.partId);
                 return (
                   <tr key={idx}>
+                    <td className="py-3 text-slate-600 font-mono text-xs">{part?.code || '-'}</td>
                     <td className="py-3 text-slate-800">
                       <span className="font-medium">{part?.name || 'Item Diverso'}</span>
                       {!part && <span className="text-xs text-slate-400 ml-2">({item.partId})</span>}
@@ -247,7 +249,7 @@ const Quotes = () => {
               {/* Labor Description Detail */}
               {order.laborCost > 0 && order.laborDescription && (
                 <tr className="bg-slate-50/50">
-                  <td colSpan={4} className="py-2 text-sm text-slate-500 italic pl-4 border-l-2 border-slate-200">
+                  <td colSpan={5} className="py-2 text-sm text-slate-500 italic pl-4 border-l-2 border-slate-200">
                     {order.laborDescription}
                   </td>
                 </tr>
@@ -264,28 +266,34 @@ const Quotes = () => {
             </tbody>
             <tfoot>
               <tr className="border-t border-slate-200">
-                <td colSpan={3} className="pt-4 text-right text-slate-600">Subtotal Peças</td>
+                <td colSpan={4} className="pt-4 text-right text-slate-600">Subtotal Peças</td>
                 <td className="pt-4 text-right text-slate-800">R$ {order.items.reduce((acc: number, item: any) => acc + (item.unitPrice * item.quantity), 0).toFixed(2)}</td>
               </tr>
               {order.discount > 0 && (
                 <tr>
-                  <td colSpan={3} className="pt-2 text-right text-red-500">Desconto {order.discount}% (sobre peças)</td>
+                  <td colSpan={4} className="pt-2 text-right text-red-500">Desconto {order.discount}% (sobre peças)</td>
                   <td className="pt-2 text-right text-red-500">- R$ {(order.items.reduce((acc: number, item: any) => acc + (item.unitPrice * item.quantity), 0) * (order.discount / 100)).toFixed(2)}</td>
                 </tr>
               )}
-              {(order.laborCost > 0 || order.shippingCost > 0) && (
+              {order.laborCost > 0 && (
                 <tr>
-                  <td colSpan={3} className="pt-2 text-right text-slate-600">Serviços e Frete</td>
-                  <td className="pt-2 text-right text-slate-800">R$ {((order.laborCost || 0) + (order.shippingCost || 0)).toFixed(2)}</td>
+                  <td colSpan={4} className="pt-2 text-right text-slate-600">Mão de Obra</td>
+                  <td className="pt-2 text-right text-slate-800">R$ {order.laborCost.toFixed(2)}</td>
+                </tr>
+              )}
+              {order.shippingCost > 0 && (
+                <tr>
+                  <td colSpan={4} className="pt-2 text-right text-slate-600">Frete ({order.shippingMethod || 'Envio'})</td>
+                  <td className="pt-2 text-right text-slate-800">R$ {order.shippingCost.toFixed(2)}</td>
                 </tr>
               )}
               <tr className="border-t-2 border-slate-800">
-                <td colSpan={3} className="pt-4 text-right font-bold text-slate-800 text-lg">TOTAL</td>
+                <td colSpan={4} className="pt-4 text-right font-bold text-slate-800 text-lg">TOTAL</td>
                 <td className="pt-4 text-right font-bold text-emerald-600 text-lg">R$ {total.toFixed(2)}</td>
               </tr>
               {order.paymentMethod && (
                 <tr>
-                  <td colSpan={3} className="pt-3 text-right text-slate-600 font-medium">Forma de Pagamento</td>
+                  <td colSpan={4} className="pt-3 text-right text-slate-600 font-medium">Forma de Pagamento</td>
                   <td className="pt-3 text-right text-slate-800 font-semibold">{order.paymentMethod}</td>
                 </tr>
               )}
@@ -502,6 +510,7 @@ const Quotes = () => {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 text-slate-500 font-medium">
                     <tr>
+                      <th className="p-3 text-left">Código</th>
                       <th className="p-3 text-left">Item</th>
                       <th className="p-3 text-right">Qtd</th>
                       <th className="p-3 text-right">Unitário</th>
@@ -514,6 +523,7 @@ const Quotes = () => {
                       const part = parts.find(p => p.id === item.partId);
                       return (
                         <tr key={idx}>
+                          <td className="p-3 text-slate-500 font-mono text-sm">{part?.code || '-'}</td>
                           <td className="p-3">
                             <div className="font-medium text-slate-800">{part ? part.name : 'Item Customizado / Excluído'}</div>
                             {!part && <div className="text-xs text-slate-400">ID: {item.partId}</div>}
@@ -666,10 +676,16 @@ const Quotes = () => {
                   <span>- R$ {calculateDiscountAmount().toFixed(2)}</span>
                 </div>
               )}
-              {(selectedOrder.laborCost > 0 || selectedOrder.shippingCost > 0) && (
+              {(selectedOrder.laborCost > 0) && (
                 <div className="flex justify-between items-center gap-4 text-slate-500">
-                  <span>Mão de Obra + Frete</span>
-                  <span>R$ {((selectedOrder.laborCost || 0) + (selectedOrder.shippingCost || 0)).toFixed(2)}</span>
+                  <span>Mão de Obra</span>
+                  <span>R$ {selectedOrder.laborCost.toFixed(2)}</span>
+                </div>
+              )}
+              {(selectedOrder.shippingCost > 0) && (
+                <div className="flex justify-between items-center gap-4 text-slate-500">
+                  <span>Frete</span>
+                  <span>R$ {selectedOrder.shippingCost.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-end items-center gap-4 mt-2">

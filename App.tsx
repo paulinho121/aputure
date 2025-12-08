@@ -10,6 +10,7 @@ import Clients from './pages/Clients';
 import ServiceOrders from './pages/ServiceOrders';
 import Quotes from './pages/Quotes';
 import Reports from './pages/Reports';
+import Maintenance from './pages/Maintenance';
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -90,6 +91,12 @@ const AppContent = () => {
       <Route path="/reports" element={
         <ProtectedRoute>
           <Reports />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/maintenance" element={
+        <ProtectedRoute>
+          <Maintenance />
         </ProtectedRoute>
       } />
     </Routes>
