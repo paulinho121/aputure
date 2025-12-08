@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
 const Login = () => {
@@ -7,12 +7,21 @@ const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
-      login(email);
+    setError('');
+    setLoading(true);
+
+    try {
+      await login(email, password);
       navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Email ou senha incorretos');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -26,6 +35,12 @@ const Login = () => {
           <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">ASSISTÊNCIA TÉCNICA</h1>
           <p className="text-slate-400 text-sm">Faça login para acessar o sistema</p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -57,14 +72,15 @@ const Login = () => {
 
           <button
             type="submit"
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg shadow-emerald-900/20"
+            disabled={loading}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Entrar
+            {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm text-slate-500">
-          Não tem acesso? <a href="#" className="text-emerald-400 hover:text-emerald-300 font-medium">Solicite registro</a>
+          Não tem acesso? <Link to="/signup" className="text-emerald-400 hover:text-emerald-300 font-medium">Criar conta</Link>
         </div>
       </div>
 

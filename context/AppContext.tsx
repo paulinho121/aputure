@@ -4,8 +4,9 @@ import { supabase } from '../lib/supabase';
 
 interface AppContextType {
   user: User | null;
-  login: (email: string) => void;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name: string) => Promise<void>;
+  logout: () => Promise<void>;
 
   parts: Part[];
   addPart: (part: Part) => Promise<void>;
@@ -29,9 +30,37 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
 
   useEffect(() => {
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          name: session.user.user_metadata.name || 'Usuário',
+          email: session.user.email || '',
+          role: 'admin'
+        });
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          name: session.user.user_metadata.name || 'Usuário',
+          email: session.user.email || '',
+          role: 'admin'
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
     fetchParts();
     fetchClients();
     fetchOrders();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const fetchParts = async () => {
@@ -205,17 +234,42 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const login = (email: string) => {
-    // Simulating login
-    setUser({
-      id: 'u1',
-      name: 'Técnico Senior',
+  const login = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      role: 'admin'
+      password
     });
+
+    if (error) throw error;
+
+    if (data.user) {
+      setUser({
+        id: data.user.id,
+        name: data.user.user_metadata.name || 'Usuário',
+        email: data.user.email || '',
+        role: 'admin'
+      });
+    }
   };
 
-  const logout = () => setUser(null);
+  const signup = async (email: string, password: string, name: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name: name
+        }
+      }
+    });
+
+    if (error) throw error;
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   const addPart = async (part: Part) => {
     // Optimistic update
@@ -419,7 +473,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AppContext.Provider value={{
-      user, login, logout,
+      user, login, signup, logout,
       parts, addPart, updatePart, refreshParts: fetchParts,
       clients, addClient,
       orders, addOrder, updateOrder

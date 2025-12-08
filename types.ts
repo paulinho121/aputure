@@ -63,6 +63,7 @@ export interface ServiceOrder {
   serviceType: 'Paid' | 'Warranty';
   items: ServiceOrderItem[]; // Used for quotes
   laborCost: number;
+  laborDescription?: string; // Description of labor/service to be performed
   shippingMethod?: string;
   shippingCost?: number;
   discount?: number;

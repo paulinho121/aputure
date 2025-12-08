@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Search, Plus, ClipboardList, Camera, CheckSquare } from 'lucide-react';
+import { Search, Plus, ClipboardList, Camera, CheckSquare, Printer } from 'lucide-react';
 import { OrderStatus, ServiceOrder } from '../types';
 import ClientSearch from '../components/ClientSearch';
 
@@ -106,6 +106,119 @@ const ServiceOrders = () => {
     o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     o.model.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Printable Entry Receipt Component
+  const PrintableEntryReceipt = ({ order }: { order: ServiceOrder }) => {
+    const client = clients.find(c => c.id === order.clientId);
+    if (!order || !client) return null;
+
+    return (
+      <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-8">
+        {/* Header */}
+        <div className="flex justify-between items-start border-b-2 border-slate-200 pb-6 mb-8">
+          <div className="flex items-center gap-4">
+            <img src="/mci-logo.png" alt="MCI" className="h-16 w-auto object-contain" />
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800">ASSISTÊNCIA TÉCNICA</h1>
+              <p className="text-sm text-slate-500">Aputure • Amaran • Cream Source • Astera</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <h2 className="text-xl font-bold text-slate-800">TERMO DE ENTRADA</h2>
+            <p className="text-slate-500 font-mono">#{order.id}</p>
+            <p className="text-sm text-slate-500 mt-1">{new Date(order.entryDate).toLocaleDateString()}</p>
+          </div>
+        </div>
+
+        {/* Client and Equipment Info */}
+        <div className="grid grid-cols-2 gap-8 mb-8">
+          <div>
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Dados do Cliente</h3>
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+              <p className="font-bold text-slate-800 text-lg">{client.name}</p>
+              <p className="text-slate-600">{client.document}</p>
+              <p className="text-slate-600">{client.email}</p>
+              <p className="text-slate-600">{client.phone}</p>
+              <p className="text-slate-500 text-sm mt-2">{client.address}</p>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Equipamento</h3>
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-bold text-slate-800 text-lg">{order.model}</p>
+                  <p className="text-slate-600">Série: {order.serialNumber || 'N/A'}</p>
+                </div>
+                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${order.serviceType === 'Warranty' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                  }`}>
+                  {order.serviceType === 'Warranty' ? 'Garantia' : 'Orçamento'}
+                </span>
+              </div>
+              <div className="mt-4">
+                <p className="text-xs font-bold text-slate-400 uppercase">Estado Físico</p>
+                <p className="text-slate-700">{order.condition}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Fault Description */}
+        <div className="mb-8">
+          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Defeito Relatado</h3>
+          <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+            <p className="text-slate-700">{order.faultDescription}</p>
+          </div>
+        </div>
+
+        {/* Accessories Checklist */}
+        <div className="mb-8">
+          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Acessórios Recebidos</h3>
+          <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+            {order.accessories.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {order.accessories.map((acc, idx) => (
+                  <span key={idx} className="px-3 py-1 bg-white border border-slate-200 rounded text-sm text-slate-700">
+                    ✓ {acc}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-400 italic">Nenhum acessório registrado</p>
+            )}
+          </div>
+        </div>
+
+        {/* Terms */}
+        <div className="mb-12 pt-8 border-t border-slate-200">
+          <div className="text-xs text-slate-400 text-justify">
+            <p className="mb-2"><strong>Condições:</strong> O equipamento será analisado e um orçamento será enviado para aprovação.</p>
+            <p className="mb-2">Toda manutenção e peças possuem garantia de 1 ano, exceto por mau uso.</p>
+            <p>O cliente autoriza a abertura e análise do equipamento para diagnóstico.</p>
+          </div>
+        </div>
+
+        {/* Signature */}
+        <div className="grid grid-cols-2 gap-12 mt-16">
+          <div className="flex flex-col items-center">
+            <div className="w-full border-b border-slate-300 mb-2"></div>
+            <p className="text-sm font-medium text-slate-600">Assinatura do Cliente</p>
+            <p className="text-xs text-slate-400">{client.name}</p>
+          </div>
+          <div className="flex flex-col items-center">
+            <div className="w-full border-b border-slate-300 mb-2"></div>
+            <p className="text-sm font-medium text-slate-600">Técnico Responsável</p>
+            <p className="text-xs text-slate-400">MCI Assistência Técnica</p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="fixed bottom-8 left-0 w-full text-center">
+          <p className="text-xs text-slate-400">MCI Assistência Técnica • www.mci.tv • {new Date().toLocaleDateString()}</p>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -380,6 +493,13 @@ const ServiceOrders = () => {
 
               <div className="p-4 border-t bg-slate-50 flex justify-end gap-2">
                 <button
+                  onClick={() => window.print()}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2"
+                >
+                  <Printer size={18} />
+                  Imprimir Termo
+                </button>
+                <button
                   onClick={() => {
                     navigate(`/quotes?orderId=${selectedOrder.id}`);
                   }}
@@ -395,6 +515,9 @@ const ServiceOrders = () => {
                 </button>
               </div>
             </div>
+
+            {/* Printable Entry Receipt */}
+            <PrintableEntryReceipt order={selectedOrder} />
           </div>
         )
       }
