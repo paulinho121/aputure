@@ -17,7 +17,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 py-8">
       <div className="bg-slate-900 p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-800">
         <div className="flex flex-col items-center mb-6 md:mb-8">
           <div className="w-24 h-24 md:w-32 md:h-32 flex items-center justify-center mb-2">
@@ -68,9 +68,9 @@ const Login = () => {
         </div>
       </div>
 
-      <footer className="absolute bottom-4 text-center text-slate-500 text-xs">
+      <footer className="mt-8 text-center text-slate-500 text-xs">
         <p>&copy; {new Date().getFullYear()} MCI. Todos os direitos reservados.</p>
-        <p>Desenvolvido por <span className="font-semibold text-emerald-500">Paulinho Fernando</span></p>
+        <p className="mt-1">Desenvolvido por <span className="font-semibold text-emerald-500">Paulinho Fernando</span></p>
       </footer>
     </div>
   );
