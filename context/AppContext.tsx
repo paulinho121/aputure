@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Client, Part, ServiceOrder, User, OrderStatus } from '../types';
-import { MOCK_CLIENTS, MOCK_ORDERS, MOCK_PARTS } from '../data/mock';
 import { supabase } from '../lib/supabase';
 
 interface AppContextType {
