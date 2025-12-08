@@ -8,6 +8,8 @@ const Quotes = () => {
   const { orders, parts, updateOrder, clients } = useApp();
   const [searchParams] = useSearchParams();
   const [selectedOrderId, setSelectedOrderId] = useState(searchParams.get('orderId') || '');
+  const [partSearch, setPartSearch] = useState('');
+  const [showPartDropdown, setShowPartDropdown] = useState(false);
 
   useEffect(() => {
     const id = searchParams.get('orderId');
@@ -38,7 +40,15 @@ const Quotes = () => {
       items: [...selectedOrder.items, newItem]
     };
     updateOrder(updatedOrder);
+    setPartSearch('');
+    setShowPartDropdown(false);
   };
+
+  // Filter parts based on search (name or code)
+  const filteredParts = parts.filter(part => {
+    const search = partSearch.toLowerCase();
+    return part.name.toLowerCase().includes(search) || part.code.toLowerCase().includes(search);
+  });
 
   const handleRemoveItem = (index: number) => {
     if (!selectedOrder) return;
@@ -89,8 +99,15 @@ const Quotes = () => {
   const calculateTotal = () => {
     if (!selectedOrder) return 0;
     const partsTotal = selectedOrder.items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
-    const subtotal = partsTotal + (selectedOrder.laborCost || 0) + (selectedOrder.shippingCost || 0);
-    return subtotal - (selectedOrder.discount || 0);
+    const discountAmount = partsTotal * ((selectedOrder.discount || 0) / 100);
+    const partsWithDiscount = partsTotal - discountAmount;
+    return partsWithDiscount + (selectedOrder.laborCost || 0) + (selectedOrder.shippingCost || 0);
+  };
+
+  const calculateDiscountAmount = () => {
+    if (!selectedOrder) return 0;
+    const partsTotal = selectedOrder.items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
+    return partsTotal * ((selectedOrder.discount || 0) / 100);
   };
 
   const handleStatusChange = (status: OrderStatus) => {
@@ -202,19 +219,31 @@ const Quotes = () => {
             </tbody>
             <tfoot>
               <tr className="border-t border-slate-200">
-                <td colSpan={3} className="pt-4 text-right text-slate-600">Subtotal</td>
-                <td className="pt-4 text-right text-slate-800">R$ {(total + (order.discount || 0)).toFixed(2)}</td>
+                <td colSpan={3} className="pt-4 text-right text-slate-600">Subtotal Peças</td>
+                <td className="pt-4 text-right text-slate-800">R$ {order.items.reduce((acc: number, item: any) => acc + (item.unitPrice * item.quantity), 0).toFixed(2)}</td>
               </tr>
               {order.discount > 0 && (
                 <tr>
-                  <td colSpan={3} className="pt-2 text-right text-red-500">Desconto</td>
-                  <td className="pt-2 text-right text-red-500">- R$ {(order.discount || 0).toFixed(2)}</td>
+                  <td colSpan={3} className="pt-2 text-right text-red-500">Desconto {order.discount}% (sobre peças)</td>
+                  <td className="pt-2 text-right text-red-500">- R$ {(order.items.reduce((acc: number, item: any) => acc + (item.unitPrice * item.quantity), 0) * (order.discount / 100)).toFixed(2)}</td>
+                </tr>
+              )}
+              {(order.laborCost > 0 || order.shippingCost > 0) && (
+                <tr>
+                  <td colSpan={3} className="pt-2 text-right text-slate-600">Serviços e Frete</td>
+                  <td className="pt-2 text-right text-slate-800">R$ {((order.laborCost || 0) + (order.shippingCost || 0)).toFixed(2)}</td>
                 </tr>
               )}
               <tr className="border-t-2 border-slate-800">
                 <td colSpan={3} className="pt-4 text-right font-bold text-slate-800 text-lg">TOTAL</td>
                 <td className="pt-4 text-right font-bold text-emerald-600 text-lg">R$ {total.toFixed(2)}</td>
               </tr>
+              {order.paymentMethod && (
+                <tr>
+                  <td colSpan={3} className="pt-3 text-right text-slate-600 font-medium">Forma de Pagamento</td>
+                  <td className="pt-3 text-right text-slate-800 font-semibold">{order.paymentMethod}</td>
+                </tr>
+              )}
             </tfoot>
           </table>
         </div>
@@ -223,8 +252,8 @@ const Quotes = () => {
         <div className="mt-12 pt-8 border-t border-slate-200">
           <div className="grid grid-cols-2 gap-12">
             <div className="text-xs text-slate-400 text-justify">
-              <p className="mb-2"><strong>Condições:</strong> Validade deste orçamento é de 10 dias. O serviço será iniciado após aprovação formal.</p>
-              <p>Garantia de 90 dias sobre as peças trocadas e serviço executado, exceto por mau uso.</p>
+              <p className="mb-2"><strong>Condições:</strong> Validade deste orçamento é de 10 dias.</p>
+              <p>Toda manutenção e peças possuem garantia de 1 ano, exceto por mau uso.</p>
             </div>
             <div className="flex flex-col items-center justify-end">
               <div className="w-full border-b border-slate-300 mb-2"></div>
@@ -234,9 +263,36 @@ const Quotes = () => {
         </div>
 
         {/* Footer */}
-        <div className="fixed bottom-8 left-0 w-full text-center">
-          <p className="text-slate-800 font-bold mb-1">Técnico Responsável: Jonathan Jow • WhatsApp: (85) 98881-7194</p>
-          <p className="text-xs text-slate-400">MCI Assistência Técnica • www.mci-store.com.br</p>
+        <div className="fixed bottom-0 left-0 w-full bg-gradient-to-r from-emerald-50 to-teal-50 border-t border-emerald-400 py-2">
+          <div className="max-w-4xl mx-auto px-8">
+            <div className="bg-white rounded shadow-sm border border-slate-200 p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-slate-600 mb-1">Técnico Responsável</p>
+                  <p className="text-sm font-semibold text-emerald-600">Jonathan Ferreira do Nascimento</p>
+                </div>
+                <div className="flex items-center gap-4 text-xs text-slate-600">
+                  <div className="flex items-center gap-1">
+                    <svg className="w-3 h-3 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                      <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                    </svg>
+                    <span className="font-medium">jonathan@mcistore.com.br</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                    </svg>
+                    <span className="font-semibold text-green-700">11 97762-8661</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                <p className="text-[10px] text-slate-500">MCI Assistência Técnica • www.mci.tv</p>
+                <p className="text-[10px] text-slate-600 font-medium">Garantia de 1 ano em toda manutenção e peças</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -262,9 +318,27 @@ const Quotes = () => {
             padding: 20px;
             background: white;
             display: block !important;
+            page-break-after: avoid;
+            page-break-inside: avoid;
           }
           @page {
-            margin: 0;
+            size: A4;
+            margin: 10mm;
+          }
+          /* Force single page */
+          html, body {
+            height: 100%;
+            overflow: hidden;
+          }
+          .print-quote {
+            transform: scale(0.95);
+            transform-origin: top left;
+          }
+          /* Prevent page breaks */
+          * {
+            page-break-inside: avoid;
+            page-break-after: avoid;
+            page-break-before: avoid;
           }
         }
       `}</style>
@@ -340,21 +414,43 @@ const Quotes = () => {
               <div className="mb-8">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-slate-800">Peças e Componentes</h3>
-                  <div className="flex gap-2">
-                    <select
-                      className="text-sm border-slate-200 rounded-lg p-2 w-64"
+                  <div className="relative w-80">
+                    <input
+                      type="text"
+                      placeholder="Buscar por nome ou código..."
+                      value={partSearch}
                       onChange={(e) => {
-                        handleAddItem(e.target.value);
-                        e.target.value = ''; // Reset select
+                        setPartSearch(e.target.value);
+                        setShowPartDropdown(true);
                       }}
-                    >
-                      <option value="">+ Adicionar Peça</option>
-                      {parts.map(part => (
-                        <option key={part.id} value={part.id}>
-                          {part.name} - R$ {part.price}
-                        </option>
-                      ))}
-                    </select>
+                      onFocus={() => setShowPartDropdown(true)}
+                      className="w-full text-sm border-slate-200 rounded-lg p-2 pr-10"
+                    />
+                    {partSearch && (
+                      <button
+                        onClick={() => {
+                          setPartSearch('');
+                          setShowPartDropdown(false);
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        ✕
+                      </button>
+                    )}
+                    {showPartDropdown && filteredParts.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                        {filteredParts.slice(0, 20).map(part => (
+                          <button
+                            key={part.id}
+                            onClick={() => handleAddItem(part.id)}
+                            className="w-full text-left px-4 py-2 hover:bg-emerald-50 border-b border-slate-100 last:border-b-0"
+                          >
+                            <div className="font-medium text-slate-800">{part.name}</div>
+                            <div className="text-xs text-slate-500">Código: {part.code} • R$ {part.price.toFixed(2)}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -435,13 +531,17 @@ const Quotes = () => {
                   </div>
                 </div>
                 <div className="w-full sm:w-48">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Desconto (R$)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Desconto sobre Peças (%)</label>
                   <input
                     type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
                     value={selectedOrder.discount || 0}
                     onChange={(e) => handleDiscountChange(parseFloat(e.target.value) || 0)}
                     className="w-full p-2 border border-red-200 rounded-lg text-right font-medium text-red-600"
                   />
+                  <p className="text-xs text-slate-500 mt-1">Percentual aplicado ao valor das peças</p>
                 </div>
 
                 <div className="w-full mt-4 border-t border-slate-100 pt-4">
@@ -498,13 +598,19 @@ const Quotes = () => {
             {/* Total Footer */}
             <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-2 items-end">
               <div className="flex justify-between items-center gap-4 text-slate-500">
-                <span>Subtotal</span>
-                <span>R$ {((selectedOrder.items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0)) + (selectedOrder.laborCost || 0) + (selectedOrder.shippingCost || 0)).toFixed(2)}</span>
+                <span>Peças</span>
+                <span>R$ {selectedOrder.items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0).toFixed(2)}</span>
               </div>
               {selectedOrder.discount && selectedOrder.discount > 0 && (
                 <div className="flex justify-between items-center gap-4 text-red-500">
-                  <span>Desconto</span>
-                  <span>- R$ {selectedOrder.discount.toFixed(2)}</span>
+                  <span>Desconto {selectedOrder.discount}% (sobre peças)</span>
+                  <span>- R$ {calculateDiscountAmount().toFixed(2)}</span>
+                </div>
+              )}
+              {(selectedOrder.laborCost > 0 || selectedOrder.shippingCost > 0) && (
+                <div className="flex justify-between items-center gap-4 text-slate-500">
+                  <span>Mão de Obra + Frete</span>
+                  <span>R$ {((selectedOrder.laborCost || 0) + (selectedOrder.shippingCost || 0)).toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-end items-center gap-4 mt-2">
