@@ -109,11 +109,11 @@ const ServiceOrders = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-slate-800">Ordens de Serviço</h1>
         <button
           onClick={() => setShowNewModal(true)}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm w-full sm:w-auto"
         >
           <Plus size={18} />
           Nova Entrada
@@ -133,16 +133,16 @@ const ServiceOrders = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-        <table className="w-full text-left">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-x-auto">
+        <table className="w-full text-left min-w-[768px]">
           <thead className="bg-slate-50 border-b border-slate-100">
             <tr>
-              <th className="p-4 font-semibold text-slate-600 text-sm">Nº OS</th>
-              <th className="p-4 font-semibold text-slate-600 text-sm">Cliente</th>
-              <th className="p-4 font-semibold text-slate-600 text-sm">Equipamento</th>
-              <th className="p-4 font-semibold text-slate-600 text-sm">Data Entrada</th>
-              <th className="p-4 font-semibold text-slate-600 text-sm">Status</th>
-              <th className="p-4 font-semibold text-slate-600 text-sm">Ações</th>
+              <th className="p-3 md:p-4 font-semibold text-slate-600 text-sm">Nº OS</th>
+              <th className="p-3 md:p-4 font-semibold text-slate-600 text-sm">Cliente</th>
+              <th className="p-3 md:p-4 font-semibold text-slate-600 text-sm">Equipamento</th>
+              <th className="p-3 md:p-4 font-semibold text-slate-600 text-sm">Data Entrada</th>
+              <th className="p-3 md:p-4 font-semibold text-slate-600 text-sm">Status</th>
+              <th className="p-3 md:p-4 font-semibold text-slate-600 text-sm">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -150,14 +150,14 @@ const ServiceOrders = () => {
               const client = clients.find(c => c.id === order.clientId);
               return (
                 <tr key={order.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-4 font-mono font-medium text-slate-800">{order.id}</td>
-                  <td className="p-4 text-slate-600">{client?.name || 'Desconhecido'}</td>
-                  <td className="p-4 text-slate-600">
-                    <div className="font-medium text-slate-800">{order.model}</div>
+                  <td className="p-3 md:p-4 font-mono font-medium text-slate-800 text-sm">{order.id}</td>
+                  <td className="p-3 md:p-4 text-slate-600 text-sm">{client?.name || 'Desconhecido'}</td>
+                  <td className="p-3 md:p-4 text-slate-600">
+                    <div className="font-medium text-slate-800 text-sm">{order.model}</div>
                     <div className="text-xs text-slate-400 font-mono">{order.serialNumber}</div>
                   </td>
-                  <td className="p-4 text-slate-600 text-sm">{new Date(order.entryDate).toLocaleDateString()}</td>
-                  <td className="p-4">
+                  <td className="p-3 md:p-4 text-slate-600 text-sm">{new Date(order.entryDate).toLocaleDateString()}</td>
+                  <td className="p-3 md:p-4">
                     <span className={`px-2 py-1 text-xs rounded-full font-medium whitespace-nowrap ${order.status === OrderStatus.COMPLETED ? 'bg-green-100 text-green-700' :
                       order.status === OrderStatus.WAITING_APPROVAL ? 'bg-amber-100 text-amber-700' :
                         order.status === OrderStatus.DIAGNOSING ? 'bg-blue-100 text-blue-700' :
@@ -166,12 +166,12 @@ const ServiceOrders = () => {
                       {order.status}
                     </span>
                   </td>
-                  <td className="p-4">
+                  <td className="p-3 md:p-4">
                     <button
                       onClick={() => setSelectedOrder(order)}
                       className="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
                     >
-                      Ver Detalhes
+                      Detalhes
                     </button>
                   </td>
                 </tr>
@@ -209,7 +209,7 @@ const ServiceOrders = () => {
                 {/* Service Type Selection */}
                 <div className="space-y-4">
                   <h2 className="text-lg font-bold border-b pb-2 flex items-center gap-2"><ClipboardList size={20} /> Tipo de Serviço</h2>
-                  <div className="flex gap-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
                     <label className={`flex-1 p-4 border rounded-xl cursor-pointer transition-all ${newOrder.serviceType === 'Paid' ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'hover:bg-slate-50'}`}>
                       <input
                         type="radio"
@@ -239,7 +239,7 @@ const ServiceOrders = () => {
                 {/* Equipment Info */}
                 <div className="space-y-4">
                   <h2 className="text-lg font-bold border-b pb-2 flex items-center gap-2"><ClipboardList size={20} /> Equipamento</h2>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">Modelo</label>
                       <input required type="text" placeholder="Ex: LS 600d Pro" className="w-full p-2 border rounded-lg" value={newOrder.model} onChange={e => setNewOrder({ ...newOrder, model: e.target.value })} />
@@ -333,7 +333,7 @@ const ServiceOrders = () => {
                       <button
                         key={status}
                         onClick={() => handleStatusChange(status)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${selectedOrder.status === status
+                        className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium border transition-all ${selectedOrder.status === status
                           ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                           : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
                           }`}

@@ -243,7 +243,7 @@ const Quotes = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-2rem)] flex gap-6">
+    <div className="min-h-[calc(100vh-2rem)] flex flex-col lg:flex-row gap-4 lg:gap-6">
       <style>{`
         @media print {
           body * {
@@ -280,7 +280,7 @@ const Quotes = () => {
       </div>
 
       {/* Sidebar: Select Order */}
-      <div className="w-80 bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col overflow-hidden print:hidden">
+      <div className="w-full lg:w-80 bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col overflow-hidden print:hidden max-h-96 lg:max-h-none">
         <div className="p-4 border-b border-slate-100 bg-slate-50">
           <h2 className="font-bold text-slate-800">Pendentes de Orçamento</h2>
         </div>
@@ -314,21 +314,21 @@ const Quotes = () => {
       <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
         {selectedOrder ? (
           <>
-            <div className="p-6 border-b border-slate-100 flex justify-between items-start">
+            <div className="p-4 md:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-slate-800 mb-1">Orçamento #{selectedOrder.id}</h1>
+                <h1 className="text-xl md:text-2xl font-bold text-slate-800 mb-1">Orçamento #{selectedOrder.id}</h1>
                 <p className="text-slate-500 text-sm">
                   Cliente: <span className="font-semibold text-slate-700">{selectedClient?.name}</span> •
                   Modelo: <span className="font-semibold text-slate-700">{selectedOrder.model}</span>
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <button onClick={() => window.print()} className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg" title="Imprimir">
                   <Printer size={20} />
                 </button>
                 <button
                   onClick={() => handleStatusChange(OrderStatus.WAITING_APPROVAL)}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium text-sm"
+                  className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium text-sm flex-1 sm:flex-initial"
                 >
                   <Send size={16} /> Enviar p/ Aprovação
                 </button>
@@ -398,41 +398,43 @@ const Quotes = () => {
               </div>
 
               {/* Labor and Shipping */}
-              <div className="flex justify-end gap-6 mb-8 flex-wrap">
-                <div className="w-64">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Método de Envio</label>
-                  <select
-                    className="w-full p-2 border rounded-lg text-sm"
-                    value={selectedOrder.shippingMethod || ''}
-                    onChange={(e) => handleShippingChange(e.target.value, selectedOrder.shippingCost || 0)}
-                  >
-                    <option value="">Selecione...</option>
-                    <option value="Correios - PAC">Correios - PAC</option>
-                    <option value="Correios - Sedex">Correios - Sedex</option>
-                    <option value="Transportadora">Transportadora</option>
-                    <option value="Retirada">Retirada no Local</option>
-                    <option value="Entrega Própria">Entrega Própria</option>
-                  </select>
+              <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Método de Envio</label>
+                    <select
+                      className="w-full p-2 border rounded-lg text-sm"
+                      value={selectedOrder.shippingMethod || ''}
+                      onChange={(e) => handleShippingChange(e.target.value, selectedOrder.shippingCost || 0)}
+                    >
+                      <option value="">Selecione...</option>
+                      <option value="Correios - PAC">Correios - PAC</option>
+                      <option value="Correios - Sedex">Correios - Sedex</option>
+                      <option value="Transportadora">Transportadora</option>
+                      <option value="Retirada">Retirada no Local</option>
+                      <option value="Entrega Própria">Entrega Própria</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Frete (R$)</label>
+                    <input
+                      type="number"
+                      value={selectedOrder.shippingCost || 0}
+                      onChange={(e) => handleShippingChange(selectedOrder.shippingMethod || '', parseFloat(e.target.value) || 0)}
+                      className="w-full p-2 border rounded-lg text-right font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Mão de Obra (R$)</label>
+                    <input
+                      type="number"
+                      value={selectedOrder.laborCost}
+                      onChange={(e) => handleLaborChange(parseFloat(e.target.value) || 0)}
+                      className="w-full p-2 border rounded-lg text-right font-medium"
+                    />
+                  </div>
                 </div>
-                <div className="w-32">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Frete (R$)</label>
-                  <input
-                    type="number"
-                    value={selectedOrder.shippingCost || 0}
-                    onChange={(e) => handleShippingChange(selectedOrder.shippingMethod || '', parseFloat(e.target.value) || 0)}
-                    className="w-full p-2 border rounded-lg text-right font-medium"
-                  />
-                </div>
-                <div className="w-32">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Mão de Obra (R$)</label>
-                  <input
-                    type="number"
-                    value={selectedOrder.laborCost}
-                    onChange={(e) => handleLaborChange(parseFloat(e.target.value) || 0)}
-                    className="w-full p-2 border rounded-lg text-right font-medium"
-                  />
-                </div>
-                <div className="w-32">
+                <div className="w-full sm:w-48">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Desconto (R$)</label>
                   <input
                     type="number"

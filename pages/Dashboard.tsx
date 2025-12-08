@@ -73,7 +73,7 @@ const DashboardOverview = ({ activeRepairs, pendingQuotes, lowStock, partsLength
               </button>
             </div>
           </div>
-          <div className="h-64">
+          <div className="h-48 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               {chartType === 'bar' ? (
                 <BarChart data={data}>
@@ -165,32 +165,32 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-          <p className="text-slate-500">Visão geral da assistência</p>
+          <p className="text-slate-500 text-sm">Visão geral da assistência</p>
         </div>
 
-        <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+        <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm w-full md:w-auto">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'overview'
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors flex-1 md:flex-initial ${activeTab === 'overview'
               ? 'bg-blue-50 text-blue-600'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
           >
             <LayoutDashboard size={18} />
-            Visão Geral
+            <span className="hidden sm:inline">Visão Geral</span>
           </button>
           <button
             onClick={() => setActiveTab('billing')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'billing'
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors flex-1 md:flex-initial ${activeTab === 'billing'
               ? 'bg-blue-50 text-blue-600'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
           >
             <DollarSign size={18} />
-            Faturamento
+            <span className="hidden sm:inline">Faturamento</span>
           </button>
         </div>
       </div>

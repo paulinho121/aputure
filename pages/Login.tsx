@@ -18,12 +18,12 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="bg-slate-900 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-800">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-32 h-32 flex items-center justify-center mb-2">
+      <div className="bg-slate-900 p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-800">
+        <div className="flex flex-col items-center mb-6 md:mb-8">
+          <div className="w-24 h-24 md:w-32 md:h-32 flex items-center justify-center mb-2">
             <img src="/mci-logo.png" alt="MCI Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">ASSISTÊNCIA TÉCNICA</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">ASSISTÊNCIA TÉCNICA</h1>
           <p className="text-slate-400 text-sm">Faça login para acessar o sistema</p>
         </div>
 

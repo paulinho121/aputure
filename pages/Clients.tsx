@@ -49,18 +49,18 @@ const Clients = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-slate-800">Clientes</h1>
         <button
           onClick={() => setShowAddModal(true)}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm w-full sm:w-auto"
         >
           <Plus size={18} />
           Novo Cliente
         </button>
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -74,7 +74,7 @@ const Clients = () => {
           </div>
         </div>
         {/* View Toggles */}
-        <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm w-fit self-start md:self-stretch items-center">
+        <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm w-fit">
           <button
             onClick={() => setViewMode('grid')}
             className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
@@ -127,26 +127,26 @@ const Clients = () => {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-          <table className="w-full text-left">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-x-auto">
+          <table className="w-full text-left min-w-[640px]">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
               <tr>
-                <th className="px-6 py-3">Nome / Documento</th>
-                <th className="px-6 py-3">Contato</th>
-                <th className="px-6 py-3">Endereço</th>
-                <th className="px-6 py-3 text-center">Ações</th>
+                <th className="px-4 md:px-6 py-3">Nome / Documento</th>
+                <th className="px-4 md:px-6 py-3">Contato</th>
+                <th className="px-4 md:px-6 py-3">Endereço</th>
+                <th className="px-4 md:px-6 py-3 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredClients.map(client => (
                 <tr key={client.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4">
+                  <td className="px-4 md:px-6 py-4">
                     <div>
                       <div className="font-medium text-slate-800">{client.name}</div>
                       <div className="text-xs font-mono text-slate-500">{client.document}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 md:px-6 py-4">
                     <div className="text-sm text-slate-600 space-y-1">
                       <div className="flex items-center gap-1">
                         <Mail size={12} className="text-slate-400" /> {client.email}
@@ -156,10 +156,10 @@ const Clients = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate" title={client.address}>
+                  <td className="px-4 md:px-6 py-4 text-sm text-slate-600 max-w-xs truncate" title={client.address}>
                     {client.address}
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-4 md:px-6 py-4 text-center">
                     <div className="flex justify-end flex-1">
                       <button
                         className="text-sm text-emerald-600 font-medium hover:underline"
@@ -201,7 +201,7 @@ const Clients = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-1">CPF / CNPJ</label>
                     <input required type="text" className="w-full p-2 border rounded-lg" value={newClient.document} onChange={e => setNewClient({ ...newClient, document: e.target.value })} />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
                       <input required type="email" className="w-full p-2 border rounded-lg" value={newClient.email} onChange={e => setNewClient({ ...newClient, email: e.target.value })} />

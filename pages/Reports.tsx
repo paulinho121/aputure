@@ -47,7 +47,7 @@ const Reports = () => {
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl font-bold text-slate-800">Relatórios de Faturamento</h1>
-                <p className="text-slate-500">Controle de receitas e garantias</p>
+                <p className="text-slate-500 text-sm">Controle de receitas e garantias</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -97,7 +97,7 @@ const Reports = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <h3 className="text-lg font-bold text-slate-800 mb-6">Comparativo Financeiro</h3>
-                    <div className="h-64">
+                    <div className="h-48 sm:h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={data}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -112,7 +112,7 @@ const Reports = () => {
 
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <h3 className="text-lg font-bold text-slate-800 mb-6">Distribuição por Tipo</h3>
-                    <div className="h-64">
+                    <div className="h-48 sm:h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie

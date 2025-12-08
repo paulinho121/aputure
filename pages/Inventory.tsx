@@ -54,44 +54,44 @@ const Inventory = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Estoque de Peças</h1>
-          <p className="text-slate-500">Gerenciamento de componentes Aputure e Astera</p>
+          <p className="text-slate-500 text-sm">Gerenciamento de componentes Aputure e Astera</p>
         </div>
 
-        <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+        <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm w-full md:w-auto">
           <button
             onClick={() => setActiveTab('list')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'list'
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors flex-1 md:flex-initial ${activeTab === 'list'
               ? 'bg-blue-50 text-blue-600'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
           >
             <Package size={18} />
-            Consulta
+            <span className="hidden sm:inline">Consulta</span>
           </button>
           <button
             onClick={() => setActiveTab('maintenance')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'maintenance'
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors flex-1 md:flex-initial ${activeTab === 'maintenance'
               ? 'bg-blue-50 text-blue-600'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
           >
             <Settings size={18} />
-            Manutenção
+            <span className="hidden sm:inline">Manutenção</span>
           </button>
         </div>
       </div>
 
       {activeTab === 'list' ? (
         <>
-          <div className="flex flex-col md:flex-row justify-between gap-4">
+          <div className="flex flex-col gap-4">
             {/* Manufacturer Filter Buttons */}
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 sm:flex gap-2">
               <button
                 onClick={() => setManufacturerFilter('all')}
-                className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${manufacturerFilter === 'all'
+                className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border transition-all ${manufacturerFilter === 'all'
                   ? 'bg-slate-800 text-white border-slate-800'
                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   }`}
@@ -100,60 +100,63 @@ const Inventory = () => {
               </button>
               <button
                 onClick={() => setManufacturerFilter('Aputure')}
-                className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all flex items-center gap-2 ${manufacturerFilter === 'Aputure'
+                className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border transition-all flex items-center gap-1 sm:gap-2 justify-center ${manufacturerFilter === 'Aputure'
                   ? 'bg-red-600 text-white border-red-600'
                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   }`}
               >
-                <img src="/aputure-logo.png" alt="Aputure" className="w-5 h-5 object-contain" />
-                Aputure
+                <img src="/aputure-logo.png" alt="Aputure" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" />
+                <span className="hidden xs:inline">Aputure</span>
               </button>
               <button
                 onClick={() => setManufacturerFilter('Astera')}
-                className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${manufacturerFilter === 'Astera'
+                className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border transition-all flex items-center gap-1 sm:gap-2 justify-center ${manufacturerFilter === 'Astera'
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   }`}
               >
-                Astera
+                <img src="/astera-logo.png" alt="Astera" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" />
+                <span className="hidden xs:inline">Astera</span>
               </button>
               <button
                 onClick={() => setManufacturerFilter('Cream Source')}
-                className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${manufacturerFilter === 'Cream Source'
+                className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border transition-all flex items-center gap-1 sm:gap-2 justify-center ${manufacturerFilter === 'Cream Source'
                   ? 'bg-emerald-600 text-white border-emerald-600'
                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   }`}
               >
-                Cream Source
+                <img src="/creamsource-logo.png" alt="Cream Source" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" />
+                <span className="hidden xs:inline">Cream</span>
               </button>
             </div>
 
+            <div className="flex flex-col sm:flex-row gap-2">
+              {/* View Toggles */}
+              <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm w-fit">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                  title="Visualização em Grade"
+                >
+                  <LayoutGrid size={20} />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                  title="Visualização em Lista"
+                >
+                  <ListIcon size={20} />
+                </button>
+              </div>
 
-            {/* View Toggles */}
-            <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm w-fit ml-auto">
               <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
-                title="Visualização em Grade"
+                onClick={handleOpenAdd}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm w-full sm:w-auto"
               >
-                <LayoutGrid size={20} />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
-                title="Visualização em Lista"
-              >
-                <ListIcon size={20} />
+                <Plus size={18} />
+                Nova Peça
               </button>
             </div>
-
-            <button
-              onClick={handleOpenAdd}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
-            >
-              <Plus size={18} />
-              Nova Peça
-            </button>
           </div>
 
           {/* Filters */}
@@ -217,34 +220,34 @@ const Inventory = () => {
               ))}
             </div>
           ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-              <table className="w-full text-left">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-x-auto">
+              <table className="w-full text-left min-w-[640px]">
                 <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
                   <tr>
-                    <th className="px-6 py-3">Peça</th>
-                    <th className="px-6 py-3">Código</th>
-                    <th className="px-6 py-3">Localização</th>
-                    <th className="px-6 py-3 text-right">Preço</th>
-                    <th className="px-6 py-3 text-right">Qtd</th>
-                    <th className="px-6 py-3 text-center">Ações</th>
+                    <th className="px-4 md:px-6 py-3">Peça</th>
+                    <th className="px-4 md:px-6 py-3">Código</th>
+                    <th className="px-4 md:px-6 py-3">Localização</th>
+                    <th className="px-4 md:px-6 py-3 text-right">Preço</th>
+                    <th className="px-4 md:px-6 py-3 text-right">Qtd</th>
+                    <th className="px-4 md:px-6 py-3 text-center">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredParts.map(part => (
                     <tr key={part.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4">
+                      <td className="px-4 md:px-6 py-4">
                         <div className="flex items-center gap-3">
                           <img src={part.imageUrl} alt="" className="w-8 h-8 rounded object-cover bg-slate-200" />
                           <span className="font-medium text-slate-800">{part.name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm font-mono text-slate-600">{part.code}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{part.location}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600 text-right">R$ {part.price.toFixed(2)}</td>
-                      <td className={`px-6 py-4 text-sm font-bold text-right ${part.quantity <= part.minStock ? 'text-red-600' : 'text-slate-600'}`}>
+                      <td className="px-4 md:px-6 py-4 text-sm font-mono text-slate-600">{part.code}</td>
+                      <td className="px-4 md:px-6 py-4 text-sm text-slate-600">{part.location}</td>
+                      <td className="px-4 md:px-6 py-4 text-sm text-slate-600 text-right">R$ {part.price.toFixed(2)}</td>
+                      <td className={`px-4 md:px-6 py-4 text-sm font-bold text-right ${part.quantity <= part.minStock ? 'text-red-600' : 'text-slate-600'}`}>
                         {part.quantity}
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 md:px-6 py-4 text-center">
                         <button
                           onClick={() => handleOpenEdit(part)}
                           className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"

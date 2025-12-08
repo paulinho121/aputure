@@ -23,8 +23,8 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
         }
       `}</style>
       <Sidebar />
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
-        <div className="flex justify-center mb-4">
+      <main className="flex-1 md:ml-64 p-4 md:p-8 overflow-y-auto">
+        <div className="hidden md:flex justify-center mb-4">
           <h2 className="text-xl font-bold bg-gradient-to-r from-slate-700 via-emerald-500 to-teal-400 bg-clip-text text-transparent animate-fade-message text-center">
             MCI — Centro Oficial de Assistência Técnica Aputure, Amaran, Creamsource e Astera. Qualidade garantida para quem exige o melhor.
           </h2>
