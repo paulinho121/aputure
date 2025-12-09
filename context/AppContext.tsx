@@ -227,6 +227,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             paymentMethod: o.payment_method,
             paymentProofUrl: o.payment_proof_url,
             invoiceNumber: o.invoice_number,
+            technicalReport: o.technical_report || '',
             photos: o.photos || []
           };
         });
@@ -414,6 +415,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           payment_method: order.paymentMethod,
           payment_proof_url: order.paymentProofUrl,
           invoice_number: order.invoiceNumber,
+          technical_report: order.technicalReport,
           photos: order.photos
         });
 
@@ -471,6 +473,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           payment_method: updatedOrder.paymentMethod,
           payment_proof_url: updatedOrder.paymentProofUrl,
           invoice_number: updatedOrder.invoiceNumber,
+          technical_report: updatedOrder.technicalReport,
           photos: updatedOrder.photos
         })
         .eq('id', updatedOrder.id);

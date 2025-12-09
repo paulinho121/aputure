@@ -11,6 +11,7 @@ const Quotes = () => {
   const [partSearch, setPartSearch] = useState('');
   const [showPartDropdown, setShowPartDropdown] = useState(false);
   const [laborDescription, setLaborDescription] = useState(''); // Local state for optimization
+  const [technicalReport, setTechnicalReport] = useState(''); // Local state for optimization
 
   useEffect(() => {
     const id = searchParams.get('orderId');
@@ -94,6 +95,7 @@ const Quotes = () => {
   useEffect(() => {
     if (selectedOrder) {
       setLaborDescription(selectedOrder.laborDescription || '');
+      setTechnicalReport(selectedOrder.technicalReport || '');
     }
   }, [selectedOrder?.id]); // Only reset when ID changes, preventing loops if we depended on full object
 
@@ -104,6 +106,16 @@ const Quotes = () => {
   const handleLaborDescriptionBlur = () => {
     if (selectedOrder && selectedOrder.laborDescription !== laborDescription) {
       updateOrder({ ...selectedOrder, laborDescription });
+    }
+  };
+
+  const handleTechnicalReportChange = (report: string) => {
+    setTechnicalReport(report);
+  };
+
+  const handleTechnicalReportBlur = () => {
+    if (selectedOrder && selectedOrder.technicalReport !== technicalReport) {
+      updateOrder({ ...selectedOrder, technicalReport });
     }
   };
 
@@ -219,8 +231,24 @@ const Quotes = () => {
                 <p className="text-xs font-bold text-slate-400 uppercase">Defeito Relatado</p>
                 <p className="text-slate-700">{order.faultDescription}</p>
               </div>
+              {order.accessories && order.accessories.length > 0 && (
+                <div className="mt-4 border-t border-slate-100 pt-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase">Acessórios</p>
+                  <p className="text-slate-700 text-sm">{Array.isArray(order.accessories) ? order.accessories.join(', ') : order.accessories}</p>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Technical Report */}
+          {order.technicalReport && (
+            <div className="mb-8">
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Relatório Técnico</h3>
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-slate-700 whitespace-pre-wrap">
+                {order.technicalReport}
+              </div>
+            </div>
+          )}
 
           {/* Items Table */}
           <div className="mb-8">
@@ -246,20 +274,11 @@ const Quotes = () => {
                         {!part && <span className="text-xs text-slate-400 ml-2">({item.partId})</span>}
                       </td>
                       <td className="py-3 text-right text-slate-600">{item.quantity}</td>
-                      <td className="py-3 text-right text-slate-600">R$ {item.unitPrice.toFixed(2)}</td>
-                      <td className="py-3 text-right text-slate-800 font-medium">R$ {(item.unitPrice * item.quantity).toFixed(2)}</td>
+                      <td className="py-3 text-right text-slate-600 whitespace-nowrap">R$ {item.unitPrice.toFixed(2)}</td>
+                      <td className="py-3 text-right text-slate-800 font-medium whitespace-nowrap">R$ {(item.unitPrice * item.quantity).toFixed(2)}</td>
                     </tr>
                   );
                 })}
-                {/* Labor Row */}
-                {order.laborCost > 0 && (
-                  <tr className="bg-slate-50/50">
-                    <td className="py-3 text-slate-800 font-medium">Mão de Obra Especializada</td>
-                    <td className="py-3 text-right text-slate-600">1</td>
-                    <td className="py-3 text-right text-slate-600">R$ {order.laborCost.toFixed(2)}</td>
-                    <td className="py-3 text-right text-slate-800 font-medium">R$ {order.laborCost.toFixed(2)}</td>
-                  </tr>
-                )}
                 {/* Labor Description Detail */}
                 {order.laborCost > 0 && order.laborDescription && (
                   <tr className="bg-slate-50/50">
@@ -268,13 +287,22 @@ const Quotes = () => {
                     </td>
                   </tr>
                 )}
+                {/* Labor Row */}
+                {order.laborCost > 0 && (
+                  <tr className="bg-slate-50/50">
+                    <td colSpan={2} className="py-3 text-slate-800 font-medium">Mão de Obra Especializada</td>
+                    <td className="py-3 text-right text-slate-600">1</td>
+                    <td className="py-3 text-right text-slate-600 whitespace-nowrap">R$ {order.laborCost.toFixed(2)}</td>
+                    <td className="py-3 text-right text-slate-800 font-medium whitespace-nowrap">R$ {order.laborCost.toFixed(2)}</td>
+                  </tr>
+                )}
                 {/* Shipping Row */}
                 {(order.shippingCost > 0 || order.shippingMethod) && (
                   <tr className="bg-slate-50/50">
-                    <td className="py-3 text-slate-800 font-medium">Frete: {order.shippingMethod || 'Envio'}</td>
+                    <td colSpan={2} className="py-3 text-slate-800 font-medium">Frete: {order.shippingMethod || 'Envio'}</td>
                     <td className="py-3 text-right text-slate-600">1</td>
-                    <td className="py-3 text-right text-slate-600">R$ {(order.shippingCost || 0).toFixed(2)}</td>
-                    <td className="py-3 text-right text-slate-800 font-medium">R$ {(order.shippingCost || 0).toFixed(2)}</td>
+                    <td className="py-3 text-right text-slate-600 whitespace-nowrap">R$ {(order.shippingCost || 0).toFixed(2)}</td>
+                    <td className="py-3 text-right text-slate-800 font-medium whitespace-nowrap">R$ {(order.shippingCost || 0).toFixed(2)}</td>
                   </tr>
                 )}
               </tbody>
@@ -473,6 +501,18 @@ const Quotes = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
+              {/* Technical Report Input */}
+              <div className="mb-8">
+                <h3 className="font-bold text-slate-800 mb-4">Relatório Técnico</h3>
+                <textarea
+                  className="w-full h-32 p-4 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none"
+                  placeholder="Descreva o laudo técnico do equipamento..."
+                  value={technicalReport}
+                  onChange={(e) => handleTechnicalReportChange(e.target.value)}
+                  onBlur={handleTechnicalReportBlur}
+                />
+              </div>
+
               {/* Parts Selection */}
               <div className="mb-8">
                 <div className="flex justify-between items-center mb-4">

@@ -72,6 +72,7 @@ export interface ServiceOrder {
   paymentMethod?: string;
   paymentProofUrl?: string;
   invoiceNumber?: string;
+  technicalReport?: string;
 }
 
 export interface User {
