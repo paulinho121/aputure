@@ -158,36 +158,51 @@ const Quotes = () => {
     if (!order) return null;
 
     return (
-      <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-8">
-        {/* Header */}
-        <div className="flex justify-between items-start border-b border-slate-200 pb-6 mb-8">
-          <div className="flex items-center gap-4">
-            <img src="/mci-logo.png" alt="MCI" className="h-16 w-auto object-contain" />
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">ASSISTÊNCIA TÉCNICA</h1>
-              <p className="text-sm text-slate-500">Aputure • Amaran • Cream Source • Astera</p>
+      <div className="hidden print:flex flex-col fixed inset-0 bg-white z-[9999]">
+        {/* Main Content Wrapper */}
+        <div className="flex-1 p-8">
+          {/* Header */}
+          <div className="flex justify-between items-start border-b border-slate-200 pb-6 mb-8">
+            <div className="flex items-center gap-4">
+              <img src="/mci-logo.png" alt="MCI" className="h-16 w-auto object-contain" />
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">ASSISTÊNCIA TÉCNICA</h1>
+                <p className="text-sm text-slate-500">Aputure • Amaran • Cream Source • Astera</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <h2 className="text-xl font-bold text-slate-800">ORÇAMENTO</h2>
+              <p className="text-slate-500 font-mono">#{order.id}</p>
+              <p className="text-sm text-slate-500 mt-1">{new Date().toLocaleDateString()}</p>
             </div>
           </div>
-          <div className="text-right">
-            <h2 className="text-xl font-bold text-slate-800">ORÇAMENTO</h2>
-            <p className="text-slate-500 font-mono">#{order.id}</p>
-            <p className="text-sm text-slate-500 mt-1">{new Date().toLocaleDateString()}</p>
-          </div>
-        </div>
 
-        {/* Info Grid */}
-        <div className="grid grid-cols-2 gap-8 mb-8">
-          <div>
-            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Dados do Cliente</h3>
-            <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-              <p className="font-bold text-slate-800 text-lg">{client?.name || 'Cliente Não Identificado'}</p>
-              <p className="text-slate-600">{client?.document}</p>
-              <p className="text-slate-600">{client?.email}</p>
-              <p className="text-slate-600">{client?.phone}</p>
-              <p className="text-slate-500 text-sm mt-2">{client?.address}</p>
+          {/* Info Grid - Row 1 (MCI and Client) */}
+          <div className="grid grid-cols-2 gap-8 mb-8">
+            <div>
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Prestador de Serviço</h3>
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 h-full">
+                <p className="font-bold text-slate-800 text-lg">Multi Comercial Importadora</p>
+                <p className="text-slate-600">CNPJ: 05.502.390/0003-83</p>
+                <p className="text-slate-600">Av. Imperatriz Leopoldina, 1718 - Vila Leopoldina</p>
+                <p className="text-slate-600">São Paulo-SP, 05305-003</p>
+                <p className="text-slate-600">2° andar</p>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Dados do Cliente</h3>
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 h-full">
+                <p className="font-bold text-slate-800 text-lg">{client?.name || 'Cliente Não Identificado'}</p>
+                <p className="text-slate-600">{client?.document}</p>
+                <p className="text-slate-600">{client?.email}</p>
+                <p className="text-slate-600">{client?.phone}</p>
+                <p className="text-slate-500 text-sm mt-2">{client?.address}</p>
+              </div>
             </div>
           </div>
-          <div>
+
+          {/* Info Grid - Row 2 (Equipment) */}
+          <div className="mb-8">
             <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Equipamento</h3>
             <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
               <div className="flex justify-between items-start">
@@ -206,117 +221,117 @@ const Quotes = () => {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Items Table */}
-        <div className="mb-8">
-          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Peças e Serviços</h3>
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b-2 border-slate-100">
-                <th className="text-left py-3 text-slate-600 font-bold">Código</th>
-                <th className="text-left py-3 text-slate-600 font-bold">Descrição</th>
-                <th className="text-right py-3 text-slate-600 font-bold">Qtd</th>
-                <th className="text-right py-3 text-slate-600 font-bold">Unitário</th>
-                <th className="text-right py-3 text-slate-600 font-bold">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {order.items?.map((item: any, idx: number) => {
-                const part = parts.find((p: any) => p.id === item.partId);
-                return (
-                  <tr key={idx}>
-                    <td className="py-3 text-slate-600 font-mono text-xs">{part?.code || '-'}</td>
-                    <td className="py-3 text-slate-800">
-                      <span className="font-medium">{part?.name || 'Item Diverso'}</span>
-                      {!part && <span className="text-xs text-slate-400 ml-2">({item.partId})</span>}
-                    </td>
-                    <td className="py-3 text-right text-slate-600">{item.quantity}</td>
-                    <td className="py-3 text-right text-slate-600">R$ {item.unitPrice.toFixed(2)}</td>
-                    <td className="py-3 text-right text-slate-800 font-medium">R$ {(item.unitPrice * item.quantity).toFixed(2)}</td>
+          {/* Items Table */}
+          <div className="mb-8">
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Peças e Serviços</h3>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-100">
+                  <th className="text-left py-3 text-slate-600 font-bold">Código</th>
+                  <th className="text-left py-3 text-slate-600 font-bold">Descrição</th>
+                  <th className="text-right py-3 text-slate-600 font-bold">Qtd</th>
+                  <th className="text-right py-3 text-slate-600 font-bold">Unitário</th>
+                  <th className="text-right py-3 text-slate-600 font-bold">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {order.items?.map((item: any, idx: number) => {
+                  const part = parts.find((p: any) => p.id === item.partId);
+                  return (
+                    <tr key={idx}>
+                      <td className="py-3 text-slate-600 font-mono text-xs">{part?.code || '-'}</td>
+                      <td className="py-3 text-slate-800">
+                        <span className="font-medium">{part?.name || 'Item Diverso'}</span>
+                        {!part && <span className="text-xs text-slate-400 ml-2">({item.partId})</span>}
+                      </td>
+                      <td className="py-3 text-right text-slate-600">{item.quantity}</td>
+                      <td className="py-3 text-right text-slate-600">R$ {item.unitPrice.toFixed(2)}</td>
+                      <td className="py-3 text-right text-slate-800 font-medium">R$ {(item.unitPrice * item.quantity).toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+                {/* Labor Row */}
+                {order.laborCost > 0 && (
+                  <tr className="bg-slate-50/50">
+                    <td className="py-3 text-slate-800 font-medium">Mão de Obra Especializada</td>
+                    <td className="py-3 text-right text-slate-600">1</td>
+                    <td className="py-3 text-right text-slate-600">R$ {order.laborCost.toFixed(2)}</td>
+                    <td className="py-3 text-right text-slate-800 font-medium">R$ {order.laborCost.toFixed(2)}</td>
                   </tr>
-                );
-              })}
-              {/* Labor Row */}
-              {order.laborCost > 0 && (
-                <tr className="bg-slate-50/50">
-                  <td className="py-3 text-slate-800 font-medium">Mão de Obra Especializada</td>
-                  <td className="py-3 text-right text-slate-600">1</td>
-                  <td className="py-3 text-right text-slate-600">R$ {order.laborCost.toFixed(2)}</td>
-                  <td className="py-3 text-right text-slate-800 font-medium">R$ {order.laborCost.toFixed(2)}</td>
+                )}
+                {/* Labor Description Detail */}
+                {order.laborCost > 0 && order.laborDescription && (
+                  <tr className="bg-slate-50/50">
+                    <td colSpan={5} className="py-2 text-sm text-slate-500 italic pl-4 border-l-2 border-slate-200">
+                      {order.laborDescription}
+                    </td>
+                  </tr>
+                )}
+                {/* Shipping Row */}
+                {(order.shippingCost > 0 || order.shippingMethod) && (
+                  <tr className="bg-slate-50/50">
+                    <td className="py-3 text-slate-800 font-medium">Frete: {order.shippingMethod || 'Envio'}</td>
+                    <td className="py-3 text-right text-slate-600">1</td>
+                    <td className="py-3 text-right text-slate-600">R$ {(order.shippingCost || 0).toFixed(2)}</td>
+                    <td className="py-3 text-right text-slate-800 font-medium">R$ {(order.shippingCost || 0).toFixed(2)}</td>
+                  </tr>
+                )}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-slate-200">
+                  <td colSpan={4} className="pt-4 text-right text-slate-600">Subtotal Peças</td>
+                  <td className="pt-4 text-right text-slate-800">R$ {order.items.reduce((acc: number, item: any) => acc + (item.unitPrice * item.quantity), 0).toFixed(2)}</td>
                 </tr>
-              )}
-              {/* Labor Description Detail */}
-              {order.laborCost > 0 && order.laborDescription && (
-                <tr className="bg-slate-50/50">
-                  <td colSpan={5} className="py-2 text-sm text-slate-500 italic pl-4 border-l-2 border-slate-200">
-                    {order.laborDescription}
-                  </td>
+                {order.discount > 0 && (
+                  <tr>
+                    <td colSpan={4} className="pt-2 text-right text-red-500">Desconto {order.discount}% (sobre peças)</td>
+                    <td className="pt-2 text-right text-red-500">- R$ {(order.items.reduce((acc: number, item: any) => acc + (item.unitPrice * item.quantity), 0) * (order.discount / 100)).toFixed(2)}</td>
+                  </tr>
+                )}
+                {order.laborCost > 0 && (
+                  <tr>
+                    <td colSpan={4} className="pt-2 text-right text-slate-600">Mão de Obra</td>
+                    <td className="pt-2 text-right text-slate-800">R$ {order.laborCost.toFixed(2)}</td>
+                  </tr>
+                )}
+                {order.shippingCost > 0 && (
+                  <tr>
+                    <td colSpan={4} className="pt-2 text-right text-slate-600">Frete ({order.shippingMethod || 'Envio'})</td>
+                    <td className="pt-2 text-right text-slate-800">R$ {order.shippingCost.toFixed(2)}</td>
+                  </tr>
+                )}
+                <tr className="border-t-2 border-slate-800">
+                  <td colSpan={4} className="pt-4 text-right font-bold text-slate-800 text-lg">TOTAL</td>
+                  <td className="pt-4 text-right font-bold text-emerald-600 text-lg">R$ {total.toFixed(2)}</td>
                 </tr>
-              )}
-              {/* Shipping Row */}
-              {(order.shippingCost > 0 || order.shippingMethod) && (
-                <tr className="bg-slate-50/50">
-                  <td className="py-3 text-slate-800 font-medium">Frete: {order.shippingMethod || 'Envio'}</td>
-                  <td className="py-3 text-right text-slate-600">1</td>
-                  <td className="py-3 text-right text-slate-600">R$ {(order.shippingCost || 0).toFixed(2)}</td>
-                  <td className="py-3 text-right text-slate-800 font-medium">R$ {(order.shippingCost || 0).toFixed(2)}</td>
-                </tr>
-              )}
-            </tbody>
-            <tfoot>
-              <tr className="border-t border-slate-200">
-                <td colSpan={4} className="pt-4 text-right text-slate-600">Subtotal Peças</td>
-                <td className="pt-4 text-right text-slate-800">R$ {order.items.reduce((acc: number, item: any) => acc + (item.unitPrice * item.quantity), 0).toFixed(2)}</td>
-              </tr>
-              {order.discount > 0 && (
-                <tr>
-                  <td colSpan={4} className="pt-2 text-right text-red-500">Desconto {order.discount}% (sobre peças)</td>
-                  <td className="pt-2 text-right text-red-500">- R$ {(order.items.reduce((acc: number, item: any) => acc + (item.unitPrice * item.quantity), 0) * (order.discount / 100)).toFixed(2)}</td>
-                </tr>
-              )}
-              {order.laborCost > 0 && (
-                <tr>
-                  <td colSpan={4} className="pt-2 text-right text-slate-600">Mão de Obra</td>
-                  <td className="pt-2 text-right text-slate-800">R$ {order.laborCost.toFixed(2)}</td>
-                </tr>
-              )}
-              {order.shippingCost > 0 && (
-                <tr>
-                  <td colSpan={4} className="pt-2 text-right text-slate-600">Frete ({order.shippingMethod || 'Envio'})</td>
-                  <td className="pt-2 text-right text-slate-800">R$ {order.shippingCost.toFixed(2)}</td>
-                </tr>
-              )}
-              <tr className="border-t-2 border-slate-800">
-                <td colSpan={4} className="pt-4 text-right font-bold text-slate-800 text-lg">TOTAL</td>
-                <td className="pt-4 text-right font-bold text-emerald-600 text-lg">R$ {total.toFixed(2)}</td>
-              </tr>
-              {order.paymentMethod && (
-                <tr>
-                  <td colSpan={4} className="pt-3 text-right text-slate-600 font-medium">Forma de Pagamento</td>
-                  <td className="pt-3 text-right text-slate-800 font-semibold">{order.paymentMethod}</td>
-                </tr>
-              )}
-            </tfoot>
-          </table>
-        </div>
+                {order.paymentMethod && (
+                  <tr>
+                    <td colSpan={4} className="pt-3 text-right text-slate-600 font-medium">Forma de Pagamento</td>
+                    <td className="pt-3 text-right text-slate-800 font-semibold">{order.paymentMethod}</td>
+                  </tr>
+                )}
+              </tfoot>
+            </table>
+          </div>
 
-        {/* Terms & Signature */}
-        <div className="mt-12 pt-8 border-t border-slate-200">
-          <div className="grid grid-cols-2 gap-12">
-            <div className="text-xs text-slate-400 text-justify">
-              <p className="mb-2"><strong>Condições:</strong> Validade deste orçamento é de 10 dias.</p>
-              <p>Toda manutenção e peças possuem garantia de 1 ano, exceto por mau uso.</p>
-            </div>
-            <div className="flex flex-col items-center justify-end">
-              <div className="w-full border-b border-slate-300 mb-2"></div>
-              <p className="text-sm font-medium text-slate-600">Assinatura do Responsável</p>
+          {/* Terms & Signature */}
+          <div className="mt-12 pt-8 border-t border-slate-200">
+            <div className="grid grid-cols-2 gap-12">
+              <div className="text-xs text-slate-400 text-justify">
+                <p className="mb-2"><strong>Condições:</strong> Validade deste orçamento é de 10 dias.</p>
+                <p>Toda manutenção e peças possuem garantia de 1 ano, exceto por mau uso.</p>
+              </div>
+              <div className="flex flex-col items-center justify-end">
+                <div className="w-full border-b border-slate-300 mb-2"></div>
+                <p className="text-sm font-medium text-slate-600">Assinatura do Responsável</p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="fixed bottom-0 left-0 w-full bg-gradient-to-r from-emerald-50 to-teal-50 border-t border-emerald-400 py-2">
+        <div className="w-full mt-auto bg-gradient-to-r from-emerald-50 to-teal-50 border-t border-emerald-400 py-2">
           <div className="max-w-4xl mx-auto px-8">
             <div className="bg-white rounded shadow-sm border border-slate-200 p-3">
               <div className="flex items-center justify-between">
@@ -368,15 +383,16 @@ const Quotes = () => {
             width: 100%;
             height: 100%;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background: white;
-            display: block !important;
+            display: flex !important;
+            flex-direction: column;
             page-break-after: avoid;
             page-break-inside: avoid;
           }
           @page {
             size: A4;
-            margin: 10mm;
+            margin: 0;
           }
           /* Force single page */
           html, body {
@@ -385,18 +401,12 @@ const Quotes = () => {
           }
           .print-quote {
             transform: scale(0.95);
-            transform-origin: top left;
-          }
-          /* Prevent page breaks */
-          * {
-            page-break-inside: avoid;
-            page-break-after: avoid;
-            page-break-before: avoid;
+            transform-origin: top center;
           }
         }
       `}</style>
 
-      {/* Render Printable Component Hiddenly (visible only via CSS print media) */}
+      {/* Render Printable Component Hiddenly */}
       <div className="print-quote hidden">
         <PrintableQuote
           order={selectedOrder}

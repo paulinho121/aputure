@@ -12,7 +12,7 @@ const Clients = () => {
   const [step, setStep] = useState(1);
   const [newClient, setNewClient] = useState<Partial<Client>>({
     name: '', document: '', email: '', phone: '',
-    zipCode: '', street: '', number: '', neighborhood: '', city: '', state: '', notes: ''
+    zipCode: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '', notes: ''
   });
 
   const filteredClients = clients.filter(c =>
@@ -28,7 +28,7 @@ const Clients = () => {
     }
 
     // Construct full address for backward compatibility if needed, but we mostly use the structured fields now if available
-    const fullAddress = `${newClient.street}, ${newClient.number} - ${newClient.neighborhood}, ${newClient.city} - ${newClient.state} (${newClient.zipCode})`;
+    const fullAddress = `${newClient.street}, ${newClient.number} ${newClient.complement ? '- ' + newClient.complement : ''} - ${newClient.neighborhood}, ${newClient.city} - ${newClient.state} (${newClient.zipCode})`;
 
     if (isEditing && newClient.id) {
       updateClient({
@@ -52,7 +52,7 @@ const Clients = () => {
     setStep(1);
     setNewClient({
       name: '', document: '', email: '', phone: '',
-      zipCode: '', street: '', number: '', neighborhood: '', city: '', state: '', notes: ''
+      zipCode: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '', notes: ''
     });
   };
 
@@ -72,7 +72,7 @@ const Clients = () => {
             setIsEditing(false);
             setNewClient({
               name: '', document: '', email: '', phone: '',
-              zipCode: '', street: '', number: '', neighborhood: '', city: '', state: ''
+              zipCode: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: ''
             });
             setStep(1);
             setShowAddModal(true);
@@ -298,15 +298,23 @@ const Clients = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Complemento</label>
+                      <input type="text" className="w-full p-2 border rounded-lg" value={newClient.complement} onChange={e => setNewClient({ ...newClient, complement: e.target.value })} />
+                    </div>
+                    <div className="col-span-2">
                       <label className="block text-sm font-medium text-slate-700 mb-1">Bairro</label>
                       <input required type="text" className="w-full p-2 border rounded-lg" value={newClient.neighborhood} onChange={e => setNewClient({ ...newClient, neighborhood: e.target.value })} />
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">Estado (UF)</label>
                       <input required type="text" maxLength={2} className="w-full p-2 border rounded-lg uppercase" value={newClient.state} onChange={e => setNewClient({ ...newClient, state: e.target.value })} />
                     </div>
+                    <div></div>
                   </div>
                 </div>
               )}
