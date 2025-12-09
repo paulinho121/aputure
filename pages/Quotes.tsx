@@ -309,29 +309,29 @@ const Quotes = () => {
               <tfoot>
                 <tr className="border-t border-slate-200">
                   <td colSpan={4} className="pt-4 text-right text-slate-600">Subtotal Peças</td>
-                  <td className="pt-4 text-right text-slate-800">R$ {order.items.reduce((acc: number, item: any) => acc + (item.unitPrice * item.quantity), 0).toFixed(2)}</td>
+                  <td className="pt-4 text-right text-slate-800 whitespace-nowrap">R$ {order.items.reduce((acc: number, item: any) => acc + (item.unitPrice * item.quantity), 0).toFixed(2)}</td>
                 </tr>
                 {order.discount > 0 && (
                   <tr>
                     <td colSpan={4} className="pt-2 text-right text-red-500">Desconto {order.discount}% (sobre peças)</td>
-                    <td className="pt-2 text-right text-red-500">- R$ {(order.items.reduce((acc: number, item: any) => acc + (item.unitPrice * item.quantity), 0) * (order.discount / 100)).toFixed(2)}</td>
+                    <td className="pt-2 text-right text-red-500 whitespace-nowrap">- R$ {(order.items.reduce((acc: number, item: any) => acc + (item.unitPrice * item.quantity), 0) * (order.discount / 100)).toFixed(2)}</td>
                   </tr>
                 )}
                 {order.laborCost > 0 && (
                   <tr>
                     <td colSpan={4} className="pt-2 text-right text-slate-600">Mão de Obra</td>
-                    <td className="pt-2 text-right text-slate-800">R$ {order.laborCost.toFixed(2)}</td>
+                    <td className="pt-2 text-right text-slate-800 whitespace-nowrap">R$ {order.laborCost.toFixed(2)}</td>
                   </tr>
                 )}
                 {order.shippingCost > 0 && (
                   <tr>
                     <td colSpan={4} className="pt-2 text-right text-slate-600">Frete ({order.shippingMethod || 'Envio'})</td>
-                    <td className="pt-2 text-right text-slate-800">R$ {order.shippingCost.toFixed(2)}</td>
+                    <td className="pt-2 text-right text-slate-800 whitespace-nowrap">R$ {order.shippingCost.toFixed(2)}</td>
                   </tr>
                 )}
                 <tr className="border-t-2 border-slate-800">
                   <td colSpan={4} className="pt-4 text-right font-bold text-slate-800 text-lg">TOTAL</td>
-                  <td className="pt-4 text-right font-bold text-emerald-600 text-lg">R$ {total.toFixed(2)}</td>
+                  <td className="pt-4 text-right font-bold text-emerald-600 text-lg whitespace-nowrap">R$ {total.toFixed(2)}</td>
                 </tr>
                 {order.paymentMethod && (
                   <tr>
