@@ -1,0 +1,15 @@
+{
+    "name": "Aputure Tech Assist",
+    "short_name": "AputureAssist",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#1A1A1A",
+    "theme_color": "#00D2B4",
+    "icons": [
+        {
+            "src": "/pwa-icon.png",
+            "sizes": "192x192 512x512",
+            "type": "image/png"
+        }
+    ]
+}
