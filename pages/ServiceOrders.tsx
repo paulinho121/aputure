@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { Search, Plus, ClipboardList, Camera, CheckSquare, Printer, Trash2 } from 'lucide-react';
 import { OrderStatus, ServiceOrder } from '../types';
 import ClientSearch from '../components/ClientSearch';
+import { supabase } from '../lib/supabase';
 
 const ServiceOrders = () => {
   const navigate = useNavigate();
@@ -35,31 +36,65 @@ const ServiceOrders = () => {
     }
   };
 
-  const handleSubmitOrder = (e: React.FormEvent) => {
+
+
+  const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClientId) {
       alert('Selecione um cliente');
       return;
     }
-    const order: ServiceOrder = {
-      id: `OS-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-      clientId: selectedClientId,
-      model: newOrder.model!,
-      serialNumber: newOrder.serialNumber!,
-      condition: newOrder.condition!,
-      faultDescription: newOrder.faultDescription!,
-      accessories: newOrder.accessories || [],
-      entryDate: new Date().toISOString(),
-      status: OrderStatus.PENDING,
-      serviceType: newOrder.serviceType || 'Paid',
-      items: [],
-      laborCost: 0,
-      photos: []
-    };
-    addOrder(order);
-    setShowNewModal(false);
-    setNewOrder({ model: '', serialNumber: '', condition: '', faultDescription: '', accessories: [], serviceType: 'Paid' });
-    setSelectedClientId('');
+
+    try {
+      const year = new Date().getFullYear();
+      const { data: lastOrders, error } = await supabase
+        .from('service_orders')
+        .select('id')
+        .ilike('id', `OS-${year}-%`)
+        .order('id', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error('Error fetching last order:', error);
+        alert('Erro ao gerar número da OS. Tente novamente.');
+        return;
+      }
+
+      let nextSequence = 1;
+      if (lastOrders && lastOrders.length > 0) {
+        const lastId = lastOrders[0].id;
+        const parts = lastId.split('-');
+        if (parts.length === 3) {
+          const sequence = parseInt(parts[2]);
+          if (!isNaN(sequence)) {
+            nextSequence = sequence + 1;
+          }
+        }
+      }
+
+      const order: ServiceOrder = {
+        id: `OS-${year}-${nextSequence.toString().padStart(3, '0')}`,
+        clientId: selectedClientId,
+        model: newOrder.model!,
+        serialNumber: newOrder.serialNumber!,
+        condition: newOrder.condition!,
+        faultDescription: newOrder.faultDescription!,
+        accessories: newOrder.accessories || [],
+        entryDate: new Date().toISOString(),
+        status: OrderStatus.PENDING,
+        serviceType: newOrder.serviceType || 'Paid',
+        items: [],
+        laborCost: 0,
+        photos: []
+      };
+      addOrder(order);
+      setShowNewModal(false);
+      setNewOrder({ model: '', serialNumber: '', condition: '', faultDescription: '', accessories: [], serviceType: 'Paid' });
+      setSelectedClientId('');
+    } catch (err) {
+      console.error('Unexpected error creating order:', err);
+      alert('Erro inesperado ao criar OS.');
+    }
   };
 
   const handleStatusChange = (status: OrderStatus) => {
