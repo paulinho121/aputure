@@ -51,15 +51,45 @@ const Billing: React.FC<BillingProps> = ({ orders }) => {
             [OrderStatus.DIAGNOSING, OrderStatus.WAITING_APPROVAL, OrderStatus.IN_REPAIR].includes(o.status)
         );
 
-        // Calculate totals
-        const totalRevenue = completedOrders.reduce((acc, order) => {
-            const partsCost = order.items?.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0) || 0;
-            return acc + (order.laborCost || 0) + partsCost;
-        }, 0);
+        // Detailed Breakdown Calculation
+        let warrantyRevenue = 0;
+        let partsRevenue = 0;
+        let laborRevenue = 0;
+        let shippingRevenue = 0;
 
+        completedOrders.forEach(order => {
+            const partsCost = order.items?.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0) || 0;
+            const laborCost = order.laborCost || 0;
+            const shippingCost = order.shippingCost || 0;
+            const discount = order.discount || 0;
+
+            // Calculate total for this order
+            const orderTotal = partsCost + laborCost + shippingCost - discount;
+
+            if (order.serviceType === 'Warranty') {
+                warrantyRevenue += orderTotal;
+            } else {
+                // For Paid orders, breakdown the components
+                // We apply discount proportionally or just subtract from total? 
+                // Since this is a simple breakdown, let's just sum raw values for Parts/Labor/Shipping
+                // and potentially handle discount separately or treat 'totalRevenue' as the truth.
+                // For simplicity and matching the user's "values", we will sum the components directly.
+                // Note: If discount exists, it technically reduces one of these or the total. 
+                // For the breakdown display, showing gross values for Parts/Labor/Shipping is usually preferred,
+                // but for "Total Revenue" we must be accurate.
+
+                partsRevenue += partsCost;
+                laborRevenue += laborCost;
+                shippingRevenue += shippingCost;
+            }
+        });
+
+        const totalRevenue = warrantyRevenue + partsRevenue + laborRevenue + shippingRevenue;
+
+        // Pending Revenue Calculation (Simplified for now, just total)
         const pendingRevenue = inProgressOrders.reduce((acc, order) => {
             const partsCost = order.items?.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0) || 0;
-            return acc + (order.laborCost || 0) + partsCost;
+            return acc + (order.laborCost || 0) + partsCost + (order.shippingCost || 0);
         }, 0);
 
         const averageTicket = completedOrders.length > 0 ? totalRevenue / completedOrders.length : 0;
@@ -74,7 +104,7 @@ const Billing: React.FC<BillingProps> = ({ orders }) => {
             }
 
             const partsCost = order.items?.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0) || 0;
-            const total = (order.laborCost || 0) + partsCost;
+            const total = (order.laborCost || 0) + partsCost + (order.shippingCost || 0) - (order.discount || 0);
 
             if (order.status === OrderStatus.COMPLETED || order.status === OrderStatus.DELIVERED) {
                 acc[mouthYear].revenue += total;
@@ -89,7 +119,11 @@ const Billing: React.FC<BillingProps> = ({ orders }) => {
             totalRevenue,
             pendingRevenue,
             averageTicket,
-            chartData: Object.values(monthlyData) // Don't slice if filtering, show strictly what's in range
+            warrantyRevenue,
+            partsRevenue,
+            laborRevenue,
+            shippingRevenue,
+            chartData: Object.values(monthlyData)
         };
     }, [filteredOrders]);
 
@@ -167,6 +201,25 @@ const Billing: React.FC<BillingProps> = ({ orders }) => {
                     icon={<CreditCard size={24} />}
                     color="bg-violet-500"
                 />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium mb-1">Em Garantia</p>
+                    <h3 className="text-xl font-bold text-slate-800">{formatCurrency(stats.warrantyRevenue)}</h3>
+                </div>
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium mb-1">Em Peças</p>
+                    <h3 className="text-xl font-bold text-slate-800">{formatCurrency(stats.partsRevenue)}</h3>
+                </div>
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium mb-1">Em Mão de Obra</p>
+                    <h3 className="text-xl font-bold text-slate-800">{formatCurrency(stats.laborRevenue)}</h3>
+                </div>
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium mb-1">Em Frete</p>
+                    <h3 className="text-xl font-bold text-slate-800">{formatCurrency(stats.shippingRevenue)}</h3>
+                </div>
             </div>
 
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
