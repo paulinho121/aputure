@@ -2,8 +2,10 @@ export enum OrderStatus {
   PENDING = 'Recebido',
   DIAGNOSING = 'Em Análise',
   WAITING_APPROVAL = 'Aguardando Aprovação',
+  WAITING_PARTS = 'Aguardando Peça',
   IN_REPAIR = 'Em Reparo',
   COMPLETED = 'Pronto',
+  RETURN = 'Devolução',
   DELIVERED = 'Entregue'
 }
 
