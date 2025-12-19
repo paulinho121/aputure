@@ -67,29 +67,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchParts = async () => {
     try {
-      const { data: aputureData, error: aputureError } = await supabase
+      const { data, error } = await supabase
         .from('parts')
         .select('*')
         .order('name');
 
-      const { data: asteraData, error: asteraError } = await supabase
-        .from('astera_parts')
-        .select('*')
-        .order('name');
+      if (error) {
+        console.error('Error fetching parts:', error);
+        return;
+      }
 
-      const { data: creamSourceData, error: creamSourceError } = await supabase
-        .from('cream_source_parts')
-        .select('*')
-        .order('name');
-
-      if (aputureError) console.error('Error fetching parts:', aputureError);
-      if (asteraError) console.error('Error fetching astera parts:', asteraError);
-      if (creamSourceError) console.error('Error fetching cream source parts:', creamSourceError);
-
-      let allParts: Part[] = [];
-
-      if (aputureData) {
-        const mappedAputure: Part[] = aputureData.map(p => ({
+      if (data) {
+        const mappedParts: Part[] = data.map(p => ({
           id: p.id,
           name: p.name,
           code: p.code,
@@ -99,44 +88,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           price: p.price,
           location: p.location || '',
           imageUrl: p.image_url || 'https://picsum.photos/200',
-          manufacturer: 'Aputure'
+          manufacturer: p.manufacturer || 'Aputure',
+          unitsPerPackage: p.units_per_package || 1
         }));
-        allParts = [...allParts, ...mappedAputure];
+        setParts(mappedParts);
       }
-
-      if (asteraData) {
-        const mappedAstera: Part[] = asteraData.map(p => ({
-          id: p.id,
-          name: p.name,
-          code: p.code,
-          category: p.category || 'Astera',
-          quantity: p.quantity,
-          minStock: p.min_stock || 0,
-          price: p.price,
-          location: p.location || '',
-          imageUrl: p.image_url || 'https://picsum.photos/200',
-          manufacturer: 'Astera'
-        }));
-        allParts = [...allParts, ...mappedAstera];
-      }
-
-      if (creamSourceData) {
-        const mappedCreamSource: Part[] = creamSourceData.map(p => ({
-          id: p.id,
-          name: p.name,
-          code: p.code,
-          category: p.category || 'Cream Source',
-          quantity: p.quantity,
-          minStock: p.min_stock || 0,
-          price: p.price,
-          location: p.location || '',
-          imageUrl: p.image_url || 'https://picsum.photos/200',
-          manufacturer: 'Cream Source' // Type assertion to satisfy the new union type if needed, but updated interface should handle it
-        }));
-        allParts = [...allParts, ...mappedCreamSource];
-      }
-
-      setParts(allParts.sort((a, b) => a.name.localeCompare(b.name)));
     } catch (err) {
       console.error('Unexpected error fetching parts:', err);
     }
@@ -289,7 +245,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       min_stock: part.minStock,
       price: part.price,
       location: part.location,
-      image_url: part.imageUrl
+      image_url: part.imageUrl,
+      manufacturer: part.manufacturer || 'Aputure',
+      units_per_package: part.unitsPerPackage || 1
     });
 
     if (error) {
@@ -312,7 +270,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       min_stock: updatedPart.minStock,
       price: updatedPart.price,
       location: updatedPart.location,
-      image_url: updatedPart.imageUrl
+      image_url: updatedPart.imageUrl,
+      manufacturer: updatedPart.manufacturer,
+      units_per_package: updatedPart.unitsPerPackage
     }).eq('id', updatedPart.id);
 
     if (error) {
@@ -485,10 +445,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Delete existing items and re-insert
-      await supabase
+      const { error: deleteError } = await supabase
         .from('service_order_items')
         .delete()
         .eq('service_order_id', updatedOrder.id);
+
+      if (deleteError) {
+        console.error('Error deleting old items:', deleteError);
+        alert('Erro ao limpar itens antigos: ' + deleteError.message);
+        return;
+      }
 
       if (updatedOrder.items && updatedOrder.items.length > 0) {
         const itemsToInsert = updatedOrder.items.map(item => ({
@@ -504,14 +470,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
         if (itemsError) {
           console.error('Error updating order items:', itemsError);
+          alert('Erro ao inserir novos itens: ' + itemsError.message);
         }
       }
 
       // Refresh orders list
       await fetchOrders();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Unexpected error updating order:', err);
-      alert('Erro inesperado ao atualizar ordem de serviço');
+      alert('Erro inesperado ao atualizar ordem de serviço: ' + (err.message || String(err)));
     }
   };
 

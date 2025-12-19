@@ -88,6 +88,71 @@ const Maintenance = () => {
         }
     };
 
+    const handleMigrateParts = async () => {
+        setLoading('migration');
+        setMessage(null);
+        try {
+            // 1. Fetch Astera Parts
+            const { data: astera, error: err1 } = await supabase.from('astera_parts').select('*');
+            if (err1) throw err1;
+
+            // 2. Fetch Cream Source Parts
+            const { data: creamsource, error: err2 } = await supabase.from('cream_source_parts').select('*');
+            if (err2) throw err2;
+
+            // 3. Migrate Astera
+            if (astera && astera.length > 0) {
+                for (const p of astera) {
+                    const { error } = await supabase.from('parts').upsert({
+                        id: p.id,
+                        name: p.name,
+                        code: p.code,
+                        category: p.category || 'Astera',
+                        quantity: p.quantity,
+                        min_stock: p.min_stock,
+                        price: p.price,
+                        location: p.location,
+                        image_url: p.image_url,
+                        manufacturer: 'Astera',
+                        units_per_package: p.units_per_package || 1
+                    }, { onConflict: 'id' });
+                    if (error) console.error('Error migrating astera:', p.name, error);
+                }
+            }
+
+            // 4. Migrate Cream Source
+            if (creamsource && creamsource.length > 0) {
+                for (const p of creamsource) {
+                    const { error } = await supabase.from('parts').upsert({
+                        id: p.id,
+                        name: p.name,
+                        code: p.code,
+                        category: p.category || 'Cream Source',
+                        quantity: p.quantity,
+                        min_stock: p.min_stock,
+                        price: p.price,
+                        location: p.location,
+                        image_url: p.image_url,
+                        manufacturer: 'Cream Source',
+                        units_per_package: p.units_per_package || 1
+                    }, { onConflict: 'id' });
+                    if (error) console.error('Error migrating cream:', p.name, error);
+                }
+            }
+
+            // 5. Update Legacy Parts to Aputure
+            await supabase.from('parts').update({ manufacturer: 'Aputure' }).is('manufacturer', null);
+
+            setMessage({ type: 'success', text: 'Migração de peças concluída com sucesso! Recarregue a página.' });
+
+        } catch (error: any) {
+            console.error('Migration error:', error);
+            setMessage({ type: 'error', text: `Erro na migração: ${error.message}` });
+        } finally {
+            setLoading(null);
+        }
+    };
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -174,6 +239,36 @@ const Maintenance = () => {
                                 Fazer Backup Completo do Sistema
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                {/* Database Tools Card */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-3 bg-amber-50 text-amber-600 rounded-lg">
+                            <Wrench size={24} />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-800">Ferramentas de Banco de Dados</h2>
+                            <p className="text-sm text-slate-500">Correções e manutenção estrutural</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <button
+                            onClick={handleMigrateParts}
+                            disabled={loading !== null}
+                            className="w-full flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-amber-400 hover:bg-amber-50 transition-all group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <Database size={20} className="text-slate-400 group-hover:text-amber-600" />
+                                <div className="text-left">
+                                    <p className="font-semibold text-slate-700 group-hover:text-amber-700">Unificar Tabelas de Peças</p>
+                                    <p className="text-xs text-slate-500">Corrigir erro de peças Astera/Cream não aparecendo</p>
+                                </div>
+                            </div>
+                            {loading === 'migration' ? <Loader2 className="animate-spin text-amber-600" /> : <CheckCircle size={18} className="text-slate-400 group-hover:text-amber-600" />}
+                        </button>
                     </div>
                 </div>
 

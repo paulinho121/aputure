@@ -20,14 +20,7 @@ export interface Part {
   location: string;
   imageUrl?: string;
   manufacturer?: 'Aputure' | 'Astera' | 'Cream Source';
-}
-
-export interface AsteraPart extends Part {
-  unitsPerPackage: number;
-}
-
-export interface CreamSourcePart extends Part {
-  unitsPerPackage: number;
+  unitsPerPackage?: number;
 }
 
 export interface Client {

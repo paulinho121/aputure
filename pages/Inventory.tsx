@@ -26,7 +26,18 @@ const Inventory = () => {
 
   const handleOpenAdd = () => {
     setIsEditing(false);
-    setFormData({ name: '', code: '', category: '', quantity: 0, minStock: 0, price: 0, location: '', imageUrl: 'https://picsum.photos/200' });
+    setFormData({
+      name: '',
+      code: '',
+      category: '',
+      quantity: 0,
+      minStock: 0,
+      price: 0,
+      location: '',
+      imageUrl: 'https://picsum.photos/200',
+      manufacturer: 'Aputure',
+      unitsPerPackage: 1
+    });
     setShowModal(true);
   };
 
@@ -284,6 +295,28 @@ const Inventory = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
                   <input type="text" className="w-full p-2 border rounded-lg" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Fabricante</label>
+                  <select
+                    className="w-full p-2 border rounded-lg"
+                    value={formData.manufacturer || 'Aputure'}
+                    onChange={e => setFormData({ ...formData, manufacturer: e.target.value as any })}
+                  >
+                    <option value="Aputure">Aputure</option>
+                    <option value="Astera">Astera</option>
+                    <option value="Cream Source">Cream Source</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Un. por Pacote</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-full p-2 border rounded-lg"
+                    value={formData.unitsPerPackage || 1}
+                    onChange={e => setFormData({ ...formData, unitsPerPackage: parseInt(e.target.value) })}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Quantidade</label>

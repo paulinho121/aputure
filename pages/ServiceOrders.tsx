@@ -47,33 +47,31 @@ const ServiceOrders = () => {
 
     try {
       const year = new Date().getFullYear();
-      const { data: lastOrders, error } = await supabase
+      const { data: allYearOrders, error } = await supabase
         .from('service_orders')
         .select('id')
-        .ilike('id', `OS-${year}-%`)
-        .order('id', { ascending: false })
-        .limit(1);
+        .ilike('id', `OS-${year}-%`);
 
       if (error) {
-        console.error('Error fetching last order:', error);
+        console.error('Error fetching orders for sequence:', error);
         alert('Erro ao gerar número da OS. Tente novamente.');
         return;
       }
 
       let nextSequence = 1;
-      if (lastOrders && lastOrders.length > 0) {
-        const lastId = lastOrders[0].id;
-        const parts = lastId.split('-');
-        if (parts.length === 3) {
-          const sequence = parseInt(parts[2]);
-          if (!isNaN(sequence)) {
-            nextSequence = sequence + 1;
-          }
+      if (allYearOrders && allYearOrders.length > 0) {
+        const sequences = allYearOrders.map(o => {
+          const parts = o.id.split('-');
+          return parts.length === 3 ? parseInt(parts[2]) : 0;
+        }).filter(s => !isNaN(s));
+
+        if (sequences.length > 0) {
+          nextSequence = Math.max(...sequences) + 1;
         }
       }
 
       const order: ServiceOrder = {
-        id: `OS-${year}-${nextSequence.toString().padStart(3, '0')}`,
+        id: `OS-${year}-${nextSequence.toString().padStart(4, '0')}`,
         clientId: selectedClientId,
         model: newOrder.model!,
         serialNumber: newOrder.serialNumber!,
