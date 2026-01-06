@@ -39,7 +39,7 @@ const Clients = () => {
       addClient({
         ...newClient as Client,
         address: fullAddress,
-        id: Math.random().toString(36).substr(2, 9)
+        id: crypto.randomUUID()
       });
     }
 

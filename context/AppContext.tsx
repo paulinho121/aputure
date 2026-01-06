@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Client, Part, ServiceOrder, User, OrderStatus } from '../types';
+import { Client, Part, ServiceOrder, User, OrderStatus, ServiceOrderItem } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface AppContextType {
@@ -67,34 +67,103 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchParts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('parts')
-        .select('*')
-        .order('name');
+      console.log('[DEBUG] Starting fetchParts...');
+      let allParts: any[] = [];
+      const seenIds = new Set<string>();
+      const seenKeys = new Set<string>();
+      let stats = { parts: 0, astera: 0, cream: 0 };
 
-      if (error) {
-        console.error('Error fetching parts:', error);
-        return;
+      // 1. Fetch from 'parts' (Unified / Aputure)
+      try {
+        const { data, error } = await supabase.from('parts').select('*');
+        if (error) {
+          console.error('[DEBUG] Error fetching parts table:', error);
+        } else if (data) {
+          stats.parts = data.length;
+          data.forEach(p => {
+            const manuf = p.manufacturer || 'Aputure';
+            allParts.push({ ...p, manufacturer: manuf });
+            seenIds.add(p.id);
+            seenKeys.add(`${p.code}-${manuf}`);
+          });
+        }
+      } catch (err) {
+        console.error('[DEBUG] Catch in parts fetch:', err);
       }
 
-      if (data) {
-        const mappedParts: Part[] = data.map(p => ({
-          id: p.id,
-          name: p.name,
-          code: p.code,
-          category: p.category || 'Geral',
-          quantity: p.quantity,
-          minStock: p.min_stock || 0,
-          price: p.price,
-          location: p.location || '',
-          imageUrl: p.image_url || 'https://picsum.photos/200',
-          manufacturer: p.manufacturer || 'Aputure',
-          unitsPerPackage: p.units_per_package || 1
-        }));
-        setParts(mappedParts);
+      // 2. Fetch from 'astera_parts'
+      try {
+        const { data, error } = await supabase.from('astera_parts').select('*');
+        if (error) {
+          console.warn('[DEBUG] Error fetching astera_parts:', error);
+        } else if (data) {
+          stats.astera = data.length;
+          data.forEach(p => {
+            const key = `${p.code}-Astera`;
+            if (!seenIds.has(p.id) && !seenKeys.has(key)) {
+              allParts.push({ ...p, manufacturer: 'Astera' });
+              seenIds.add(p.id);
+              seenKeys.add(key);
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('[DEBUG] Catch in astera_parts fetch:', err);
       }
+
+      // 3. Fetch from 'cream_source_parts'
+      try {
+        const { data, error } = await supabase.from('cream_source_parts').select('*');
+        if (error) {
+          console.warn('[DEBUG] Error fetching cream_source_parts:', error);
+        } else if (data) {
+          stats.cream = data.length;
+          data.forEach(p => {
+            const key = `${p.code}-Cream Source`;
+            if (!seenIds.has(p.id) && !seenKeys.has(key)) {
+              allParts.push({ ...p, manufacturer: 'Cream Source' });
+              seenIds.add(p.id);
+              seenKeys.add(key);
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('[DEBUG] Catch in cream_source_parts fetch:', err);
+      }
+
+      const mappedParts: Part[] = allParts.map(p => {
+        try {
+          return {
+            id: p.id || Math.random().toString(),
+            name: String(p.name || 'Sem nome'),
+            code: String(p.code || 'S/C'),
+            category: String(p.category || 'Geral'),
+            quantity: Number(p.quantity || 0),
+            minStock: Number(p.min_stock || 0),
+            price: typeof p.price === 'number' ? p.price : (parseFloat(String(p.price || 0).replace(',', '.')) || 0),
+            location: String(p.location || ''),
+            imageUrl: String(p.image_url || 'https://picsum.photos/200'),
+            manufacturer: (p.manufacturer || 'Aputure') as any,
+            unitsPerPackage: Number(p.units_per_package || 1)
+          };
+        } catch (mErr) {
+          console.error('[DEBUG] Mapping error for part:', p, mErr);
+          return null;
+        }
+      }).filter(p => p !== null) as Part[];
+
+      mappedParts.sort((a, b) => a.name.localeCompare(b.name));
+
+      console.log(`[DEBUG] Final total parts mapped: ${mappedParts.length}`, stats);
+
+      // If we found zero parts but no errors, it's very strange, so we log it
+      if (mappedParts.length === 0 && (stats.parts > 0 || stats.astera > 0 || stats.cream > 0)) {
+        console.error('[DEBUG] ERROR: Data was found in tables but mapping resulted in 0 items.');
+      }
+
+      setParts(mappedParts);
     } catch (err) {
-      console.error('Unexpected error fetching parts:', err);
+      console.error('[DEBUG] Fatal error in fetchParts:', err);
     }
   };
 
@@ -252,9 +321,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     if (error) {
       console.error('Error adding part:', error);
-      // Revert (not implemented for simplicity in this step)
+      alert('Erro ao salvar peça no banco de dados: ' + error.message);
+      // Revert optimistic update
+      setParts(parts.filter(p => p.id !== part.id));
     } else {
-      await fetchParts(); // Refresh to get the real ID
+      await fetchParts(); // Refresh to get the real ID from DB
     }
   };
 
@@ -277,6 +348,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     if (error) {
       console.error('Error updating part:', error);
+      alert('Erro ao atualizar peça: ' + error.message);
+      // Refresh to ensure local state matches DB
+      await fetchParts();
     }
   };
 
@@ -351,6 +425,61 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const ensurePartsExist = async (items: ServiceOrderItem[]) => {
+    for (const item of items) {
+      try {
+        const { data: exists } = await supabase.from('parts').select('id').eq('id', item.partId).maybeSingle();
+
+        if (!exists) {
+          console.log(`[DEBUG] Part ${item.partId} not found in 'parts' table. Attempting auto-migration...`);
+          const partToMigrate = parts.find(p => p.id === item.partId);
+
+          if (partToMigrate) {
+            // Try inserting with all columns (new schema)
+            let { error: migError } = await supabase.from('parts').insert({
+              id: partToMigrate.id,
+              name: partToMigrate.name,
+              code: partToMigrate.code,
+              category: partToMigrate.category,
+              quantity: partToMigrate.quantity,
+              min_stock: partToMigrate.minStock,
+              price: partToMigrate.price,
+              location: partToMigrate.location,
+              image_url: partToMigrate.imageUrl,
+              manufacturer: partToMigrate.manufacturer || 'Aputure',
+              units_per_package: partToMigrate.unitsPerPackage || 1
+            });
+
+            // FALLBACK: If columns don't exist, try plain insert (old schema)
+            if (migError && (migError.message.includes('column "manufacturer" does not exist') || migError.message.includes('column "units_per_package" does not exist'))) {
+              console.log(`[DEBUG] New columns missing in 'parts', retrying simple migration for ${partToMigrate.name}`);
+              const { error: fallbackError } = await supabase.from('parts').insert({
+                id: partToMigrate.id,
+                name: partToMigrate.name,
+                code: partToMigrate.code,
+                category: partToMigrate.category,
+                quantity: partToMigrate.quantity,
+                min_stock: partToMigrate.minStock,
+                price: partToMigrate.price,
+                location: partToMigrate.location,
+                image_url: partToMigrate.imageUrl
+              });
+              migError = fallbackError;
+            }
+
+            if (migError) {
+              console.error(`[DEBUG] Auto-migration failed for ${partToMigrate.name}:`, migError);
+            } else {
+              console.log(`[DEBUG] Auto-migration successful for ${partToMigrate.name}`);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[DEBUG] Error checking/migrating part:', err);
+      }
+    }
+  };
+
   const addOrder = async (order: ServiceOrder) => {
     try {
       // Insert order into database
@@ -387,6 +516,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
       // Insert order items if any
       if (order.items && order.items.length > 0) {
+        // Ensure parts exist in main table first
+        await ensurePartsExist(order.items);
+
         const itemsToInsert = order.items.map(item => ({
           service_order_id: order.id,
           part_id: item.partId,
@@ -400,6 +532,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
         if (itemsError) {
           console.error('Error adding order items:', itemsError);
+          alert('Erro ao inserir itens no orçamento: ' + itemsError.message);
         }
       }
 
@@ -457,6 +590,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (updatedOrder.items && updatedOrder.items.length > 0) {
+        // AUTO-MIGRATION SAFETY NET:
+        // Ensure all part IDs exist in the main 'parts' table before linking them
+        await ensurePartsExist(updatedOrder.items);
+
         const itemsToInsert = updatedOrder.items.map(item => ({
           service_order_id: updatedOrder.id,
           part_id: item.partId,
@@ -470,7 +607,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
         if (itemsError) {
           console.error('Error updating order items:', itemsError);
-          alert('Erro ao inserir novos itens: ' + itemsError.message);
+          alert('Erro ao inserir novos itens no orçamento. Por favor, certifique-se de que a unificação das tabelas de estoque foi realizada na aba Manutenção. Erro: ' + itemsError.message);
         }
       }
 

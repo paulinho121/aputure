@@ -4,7 +4,8 @@ import { Download, Database, Server, Users, Wrench, Package, AlertTriangle, Chec
 
 const Maintenance = () => {
     const [loading, setLoading] = useState<string | null>(null);
-    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [message, setMessage] = useState<{ type: 'success' | 'informative' | 'error'; text: string } | null>(null);
+    const [firstError, setFirstError] = useState<string | null>(null);
 
     const downloadFile = (data: any, filename: string) => {
         const jsonString = JSON.stringify(data, null, 2);
@@ -100,50 +101,147 @@ const Maintenance = () => {
             const { data: creamsource, error: err2 } = await supabase.from('cream_source_parts').select('*');
             if (err2) throw err2;
 
+            let successCount = 0;
+            let failCount = 0;
+            setFirstError(null);
+
             // 3. Migrate Astera
             if (astera && astera.length > 0) {
                 for (const p of astera) {
-                    const { error } = await supabase.from('parts').upsert({
-                        id: p.id,
-                        name: p.name,
-                        code: p.code,
-                        category: p.category || 'Astera',
-                        quantity: p.quantity,
-                        min_stock: p.min_stock,
-                        price: p.price,
-                        location: p.location,
-                        image_url: p.image_url,
-                        manufacturer: 'Astera',
-                        units_per_package: p.units_per_package || 1
-                    }, { onConflict: 'id' });
-                    if (error) console.error('Error migrating astera:', p.name, error);
+                    try {
+                        const partData: any = {
+                            name: p.name,
+                            code: p.code,
+                            category: p.category || 'Astera',
+                            quantity: p.quantity,
+                            min_stock: p.min_stock,
+                            price: p.price,
+                            location: p.location,
+                            image_url: p.image_url
+                        };
+
+                        // Check if part already exists in 'parts' table by CODE
+                        const { data: existing } = await supabase.from('parts').select('id').eq('code', p.code).maybeSingle();
+
+                        let result;
+                        if (existing) {
+                            // Update existing part in 'parts' table
+                            result = await supabase.from('parts').update({
+                                ...partData,
+                                manufacturer: 'Astera',
+                                units_per_package: p.units_per_package || 1
+                            }).eq('id', existing.id);
+
+                            // Fallback if update fails due to missing columns
+                            if (result.error && (
+                                result.error.message.includes('column "manufacturer" does not exist') ||
+                                result.error.message.includes("Could not find the 'manufacturer' column")
+                            )) {
+                                result = await supabase.from('parts').update(partData).eq('id', existing.id);
+                            }
+                        } else {
+                            // Insert as new part in 'parts' table
+                            result = await supabase.from('parts').insert({
+                                id: p.id,
+                                ...partData,
+                                manufacturer: 'Astera',
+                                units_per_package: p.units_per_package || 1
+                            });
+
+                            // Fallback if insert fails due to missing columns
+                            if (result.error && (
+                                result.error.message.includes('column "manufacturer" does not exist') ||
+                                result.error.message.includes("Could not find the 'manufacturer' column")
+                            )) {
+                                result = await supabase.from('parts').insert({ id: p.id, ...partData });
+                            }
+                        }
+
+                        if (result.error) {
+                            console.error('Error migrating astera:', p.name, result.error);
+                            if (!firstError) setFirstError(`Astera (${p.code}): ${result.error.message}`);
+                            failCount++;
+                        } else {
+                            successCount++;
+                        }
+                    } catch (err: any) {
+                        console.error('Unexpected error in astera loop:', err);
+                        if (!firstError) setFirstError(err.message || String(err));
+                        failCount++;
+                    }
                 }
             }
 
             // 4. Migrate Cream Source
             if (creamsource && creamsource.length > 0) {
                 for (const p of creamsource) {
-                    const { error } = await supabase.from('parts').upsert({
-                        id: p.id,
-                        name: p.name,
-                        code: p.code,
-                        category: p.category || 'Cream Source',
-                        quantity: p.quantity,
-                        min_stock: p.min_stock,
-                        price: p.price,
-                        location: p.location,
-                        image_url: p.image_url,
-                        manufacturer: 'Cream Source',
-                        units_per_package: p.units_per_package || 1
-                    }, { onConflict: 'id' });
-                    if (error) console.error('Error migrating cream:', p.name, error);
+                    try {
+                        const partData: any = {
+                            name: p.name,
+                            code: p.code,
+                            category: p.category || 'Cream Source',
+                            quantity: p.quantity,
+                            min_stock: p.min_stock,
+                            price: p.price,
+                            location: p.location,
+                            image_url: p.image_url
+                        };
+
+                        const { data: existing } = await supabase.from('parts').select('id').eq('code', p.code).maybeSingle();
+
+                        let result;
+                        if (existing) {
+                            result = await supabase.from('parts').update({
+                                ...partData,
+                                manufacturer: 'Cream Source',
+                                units_per_package: p.units_per_package || 1
+                            }).eq('id', existing.id);
+
+                            if (result.error && (
+                                result.error.message.includes('column "manufacturer" does not exist') ||
+                                result.error.message.includes("Could not find the 'manufacturer' column")
+                            )) {
+                                result = await supabase.from('parts').update(partData).eq('id', existing.id);
+                            }
+                        } else {
+                            result = await supabase.from('parts').insert({
+                                id: p.id,
+                                ...partData,
+                                manufacturer: 'Cream Source',
+                                units_per_package: p.units_per_package || 1
+                            });
+
+                            if (result.error && (
+                                result.error.message.includes('column "manufacturer" does not exist') ||
+                                result.error.message.includes("Could not find the 'manufacturer' column")
+                            )) {
+                                result = await supabase.from('parts').insert({ id: p.id, ...partData });
+                            }
+                        }
+
+                        if (result.error) {
+                            console.error('Error migrating cream:', p.name, result.error);
+                            if (!firstError) setFirstError(`Cream (${p.code}): ${result.error.message}`);
+                            failCount++;
+                        } else {
+                            successCount++;
+                        }
+                    } catch (err: any) {
+                        console.error('Unexpected error in cream loop:', err);
+                        if (!firstError) setFirstError(err.message || String(err));
+                        failCount++;
+                    }
                 }
             }
 
             // 5. Update Legacy Parts to Aputure
             await supabase.from('parts').update({ manufacturer: 'Aputure' }).is('manufacturer', null);
 
-            setMessage({ type: 'success', text: 'Migração de peças concluída com sucesso! Recarregue a página.' });
+            if (failCount === 0) {
+                setMessage({ type: 'success', text: `Migração concluída! ${successCount} peças movidas com sucesso para a tabela unificada.` });
+            } else {
+                setMessage({ type: 'success', text: `Migração finalizada com alertas: ${successCount} peças movidas, ${failCount} falhas. Verifique o console para detalhes.` });
+            }
 
         } catch (error: any) {
             console.error('Migration error:', error);
@@ -163,10 +261,20 @@ const Maintenance = () => {
             </div>
 
             {message && (
-                <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
+                <div className={`mb-6 p-4 rounded-lg flex flex-col gap-2 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                    message.type === 'informative' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                        'bg-red-50 text-red-700 border border-red-200'
                     }`}>
-                    {message.type === 'success' ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}
-                    <p>{message.text}</p>
+                    <div className="flex items-center gap-3">
+                        {message.type === 'success' ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}
+                        <p className="font-bold">{message.text}</p>
+                    </div>
+                    {firstError && (
+                        <div className="mt-2 text-sm bg-white/50 p-2 rounded border border-current/20 font-mono">
+                            <p className="font-bold uppercase text-[10px] opacity-70">Detalhe do Erro:</p>
+                            <p>{firstError}</p>
+                        </div>
+                    )}
                 </div>
             )}
 

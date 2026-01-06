@@ -17,8 +17,10 @@ const Inventory = () => {
   });
 
   const filteredParts = parts.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const search = searchTerm.toLowerCase();
+    const name = p.name?.toLowerCase() || '';
+    const code = p.code?.toLowerCase() || '';
+    const matchesSearch = name.includes(search) || code.includes(search);
 
     if (manufacturerFilter === 'all') return matchesSearch;
     return matchesSearch && p.manufacturer === manufacturerFilter;
@@ -56,7 +58,7 @@ const Inventory = () => {
     } else {
       await addPart({
         ...formData as Part,
-        id: Math.random().toString(36).substr(2, 9), // Temp ID, will be replaced by DB
+        id: crypto.randomUUID(), // Valid UUID format for temporary ID
         imageUrl: formData.imageUrl || 'https://picsum.photos/200'
       });
     }

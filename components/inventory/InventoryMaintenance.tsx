@@ -80,7 +80,7 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
 
                             const quantityKey = Object.keys(row).find(k => k.toLowerCase().startsWith('contagem'));
 
-                            const part = {
+                            const part: any = {
                                 code,
                                 name: row['Nome da Peça'] || 'Nome desconhecido',
                                 price: cleanCurrency(row['Valor unitário'] || 0),
@@ -90,12 +90,22 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                                 category: 'Astera'
                             };
 
-                            result = await supabase.from('astera_parts').upsert(part, { onConflict: 'code' });
+                            // Try to insert with manufacturer (unified table)
+                            result = await supabase.from('parts').upsert({ ...part, manufacturer: 'Astera' }, { onConflict: 'code,manufacturer' });
+
+                            // Fallback if column doesn't exist
+                            if (result.error && (
+                                result.error.message.includes('column "manufacturer" does not exist') ||
+                                result.error.message.includes('column "units_per_package" does not exist') ||
+                                result.error.message.includes("Could not find the 'manufacturer' column")
+                            )) {
+                                result = await supabase.from('parts').upsert(part, { onConflict: 'code' });
+                            }
                         } else if (importType === 'cream_source') {
                             const code = row['Código']?.toString();
                             if (!code) continue;
 
-                            const part = {
+                            const part: any = {
                                 code,
                                 name: row['Nome da Peça'] || 'Nome desconhecido',
                                 price: cleanCurrency(row['Price'] || row['Valor'] || 0),
@@ -104,12 +114,19 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                                 category: 'Cream Source'
                             };
 
-                            result = await supabase.from('cream_source_parts').upsert(part, { onConflict: 'code' });
+                            result = await supabase.from('parts').upsert({ ...part, manufacturer: 'Cream Source' }, { onConflict: 'code,manufacturer' });
+
+                            if (result.error && (
+                                result.error.message.includes('column "manufacturer" does not exist') ||
+                                result.error.message.includes("Could not find the 'manufacturer' column")
+                            )) {
+                                result = await supabase.from('parts').upsert(part, { onConflict: 'code' });
+                            }
                         } else {
                             const code = row['Código']?.toString();
                             if (!code) continue;
 
-                            const part = {
+                            const part: any = {
                                 code,
                                 name: row['Nome da Peça'] || 'Nome desconhecido',
                                 price: cleanCurrency(row['Price'] || row['Preço'] || 0),
@@ -119,7 +136,14 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                                 min_stock: 5
                             };
 
-                            result = await supabase.from('parts').upsert(part, { onConflict: 'code' });
+                            result = await supabase.from('parts').upsert({ ...part, manufacturer: 'Aputure' }, { onConflict: 'code,manufacturer' });
+
+                            if (result.error && (
+                                result.error.message.includes('column "manufacturer" does not exist') ||
+                                result.error.message.includes("Could not find the 'manufacturer' column")
+                            )) {
+                                result = await supabase.from('parts').upsert(part, { onConflict: 'code' });
+                            }
                         }
 
                         if (result.error) {

@@ -12,6 +12,9 @@ const Quotes = () => {
   const [showPartDropdown, setShowPartDropdown] = useState(false);
   const [laborDescription, setLaborDescription] = useState(''); // Local state for optimization
   const [technicalReport, setTechnicalReport] = useState(''); // Local state for optimization
+  const [laborCostLocal, setLaborCostLocal] = useState('0');
+  const [shippingCostLocal, setShippingCostLocal] = useState('0');
+  const [discountLocal, setDiscountLocal] = useState('0');
 
   useEffect(() => {
     const id = searchParams.get('orderId');
@@ -68,7 +71,9 @@ const Quotes = () => {
   // Filter parts based on search (name or code)
   const filteredParts = parts.filter(part => {
     const search = partSearch.toLowerCase();
-    return part.name.toLowerCase().includes(search) || part.code.toLowerCase().includes(search);
+    const name = part.name?.toLowerCase() || '';
+    const code = part.code?.toLowerCase() || '';
+    return name.includes(search) || code.includes(search);
   });
 
   const handleRemoveItem = (index: number) => {
@@ -96,6 +101,9 @@ const Quotes = () => {
     if (selectedOrder) {
       setLaborDescription(selectedOrder.laborDescription || '');
       setTechnicalReport(selectedOrder.technicalReport || '');
+      setLaborCostLocal(String(selectedOrder.laborCost || 0));
+      setShippingCostLocal(String(selectedOrder.shippingCost || 0));
+      setDiscountLocal(String(selectedOrder.discount || 0));
     }
   }, [selectedOrder?.id]); // Only reset when ID changes, preventing loops if we depended on full object
 
@@ -119,14 +127,29 @@ const Quotes = () => {
     }
   };
 
-  const handleShippingChange = (method: string, cost: number) => {
+  const handleShippingChangeLocal = (method: string) => {
     if (selectedOrder) {
-      updateOrder({ ...selectedOrder, shippingMethod: method, shippingCost: cost });
+      updateOrder({ ...selectedOrder, shippingMethod: method });
     }
   };
 
-  const handleDiscountChange = (val: number) => {
-    if (selectedOrder) {
+  const handleLaborBlur = () => {
+    const val = parseFloat(laborCostLocal) || 0;
+    if (selectedOrder && selectedOrder.laborCost !== val) {
+      updateOrder({ ...selectedOrder, laborCost: val });
+    }
+  };
+
+  const handleShippingBlur = () => {
+    const val = parseFloat(shippingCostLocal) || 0;
+    if (selectedOrder && selectedOrder.shippingCost !== val) {
+      updateOrder({ ...selectedOrder, shippingCost: val });
+    }
+  };
+
+  const handleDiscountBlur = () => {
+    const val = parseFloat(discountLocal) || 0;
+    if (selectedOrder && selectedOrder.discount !== val) {
       updateOrder({ ...selectedOrder, discount: val });
     }
   };
@@ -606,7 +629,7 @@ const Quotes = () => {
                     <select
                       className="w-full p-2 border rounded-lg text-sm"
                       value={selectedOrder.shippingMethod || ''}
-                      onChange={(e) => handleShippingChange(e.target.value, selectedOrder.shippingCost || 0)}
+                      onChange={(e) => handleShippingChangeLocal(e.target.value)}
                     >
                       <option value="">Selecione...</option>
                       <option value="Correios - PAC">Correios - PAC</option>
@@ -620,8 +643,9 @@ const Quotes = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-1">Frete (R$)</label>
                     <input
                       type="number"
-                      value={selectedOrder.shippingCost || 0}
-                      onChange={(e) => handleShippingChange(selectedOrder.shippingMethod || '', parseFloat(e.target.value) || 0)}
+                      value={shippingCostLocal}
+                      onChange={(e) => setShippingCostLocal(e.target.value)}
+                      onBlur={handleShippingBlur}
                       className="w-full p-2 border rounded-lg text-right font-medium"
                     />
                   </div>
@@ -629,8 +653,9 @@ const Quotes = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-1">Mão de Obra (R$)</label>
                     <input
                       type="number"
-                      value={selectedOrder.laborCost}
-                      onChange={(e) => handleLaborChange(parseFloat(e.target.value) || 0)}
+                      value={laborCostLocal}
+                      onChange={(e) => setLaborCostLocal(e.target.value)}
+                      onBlur={handleLaborBlur}
                       className="w-full p-2 border rounded-lg text-right font-medium"
                     />
                   </div>
@@ -656,8 +681,9 @@ const Quotes = () => {
                     min="0"
                     max="100"
                     step="0.1"
-                    value={selectedOrder.discount || 0}
-                    onChange={(e) => handleDiscountChange(parseFloat(e.target.value) || 0)}
+                    value={discountLocal}
+                    onChange={(e) => setDiscountLocal(e.target.value)}
+                    onBlur={handleDiscountBlur}
                     className="w-full p-2 border border-red-200 rounded-lg text-right font-medium text-red-600"
                   />
                   <p className="text-xs text-slate-500 mt-1">Percentual aplicado ao valor das peças</p>
