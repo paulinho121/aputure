@@ -11,7 +11,7 @@ interface InventoryMaintenanceProps {
 const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate }) => {
     const { brands, bulkAddParts, bulkUpdateQuantities } = useApp();
     const [selectedBrandId, setSelectedBrandId] = useState<string>('');
-    const [importType, setImportType] = useState<'general' | 'xml' | 'csv_text'>('general');
+    const [importType, setImportType] = useState<'general' | 'xml' | 'pdf' | 'csv_text'>('general');
     const [isDragOver, setIsDragOver] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [logs, setLogs] = useState<string[]>([]);
@@ -37,8 +37,11 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
         const files = e.dataTransfer.files;
         if (files.length > 0) {
             const file = files[0];
-            if (file.name.toLowerCase().endsWith('.xml')) {
+            const fileName = file.name.toLowerCase();
+            if (fileName.endsWith('.xml')) {
                 processXmlFile(file);
+            } else if (fileName.endsWith('.pdf')) {
+                processPdfFile(file);
             } else {
                 processFile(file);
             }
@@ -149,6 +152,88 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
             }
         };
         reader.readAsText(file);
+    };
+
+    const processPdfFile = async (file: File) => {
+        if (!selectedBrandId) {
+            alert('Por favor, selecione uma marca para o PDF.');
+            return;
+        }
+
+        setProcessing(true);
+        setLogs(prev => [`Lendo PDF (DANFE): ${file.name}...`, ...prev]);
+
+        try {
+            // Dynamically import pdfjs-dist
+            const pdfjs = await import('pdfjs-dist');
+            // Set worker from CDN for simplicity in browser
+            pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+
+            let fullText = "";
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map((item: any) => item.str).join(" ");
+                fullText += pageText + "\n";
+            }
+
+            console.log("PDF Extracted Text:", fullText);
+
+            const brand = brands.find(b => b.id === selectedBrandId);
+            const updates: any[] = [];
+
+            // Pattern for DANFE items (heuristic)
+            // Código (1) Descrição (2) NCM (3) CST CFOP UNID QUANT (4) V.UNIT (5)
+            // Example: 123456 PECA TESTE 12345678 000 5102 UN 10,00 100,00
+            // We search for NCM (8 digits) followed by a sequence of data
+            const itemRegex = /(\S+)\s+(.+?)\s+(\d{8})\s+\d{3,4}\s+\d{4}\s+[A-Z]{1,4}\s+([\d.,]+)\s+([\d.,]+)/g;
+
+            let match;
+            while ((match = itemRegex.exec(fullText)) !== null) {
+                const code = match[1];
+                const name = match[2];
+                const qtyStr = match[4];
+                const priceStr = match[5];
+
+                if (code && name && qtyStr) {
+                    updates.push({
+                        code: code.trim(),
+                        name: name.trim(),
+                        quantity: parseFloat(qtyStr.replace('.', '').replace(',', '.')),
+                        price: parseFloat(priceStr.replace('.', '').replace(',', '.')),
+                        brandId: selectedBrandId,
+                        manufacturer: brand?.name
+                    });
+                }
+            }
+
+            if (updates.length > 0) {
+                setLogs(prev => [`PDF processado. Detectados ${updates.length} itens. Sincronizando...`, ...prev]);
+                const result = await bulkUpdateQuantities(updates);
+
+                setLogs(prev => [
+                    `Importação PDF concluída: ${result.success} processados (${result.created} novos), ${result.errors.length} falhas.`,
+                    ...result.errors.map(err => `FALHA: ${err}`),
+                    ...prev
+                ]);
+                onUpdate();
+            } else {
+                setLogs(prev => [
+                    "AVISO: Não foi possível detectar itens no layout deste PDF.",
+                    "Dica: Tente usar o arquivo XML da nota, que é 100% garantido.",
+                    ...prev
+                ]);
+            }
+
+        } catch (err: any) {
+            console.error('Error processing PDF:', err);
+            setLogs(prev => [`Erro fatal PDF: ${err.message}`, ...prev]);
+        } finally {
+            setProcessing(false);
+        }
     };
 
     const processFile = async (file: File) => {
@@ -294,6 +379,12 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                                 XML (NF-e)
                             </button>
                             <button
+                                onClick={() => setImportType('pdf')}
+                                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${importType === 'pdf' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                            >
+                                PDF (DANFE)
+                            </button>
+                            <button
                                 onClick={() => setImportType('csv_text')}
                                 className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${importType === 'csv_text' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
                             >
@@ -304,7 +395,7 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                 </div>
             </div>
 
-            {importType === 'general' || importType === 'xml' ? (
+            {importType === 'general' || importType === 'xml' || importType === 'pdf' ? (
                 <div
                     className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${isDragOver ? 'border-blue-500 bg-blue-50' : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50'
                         }`}
@@ -318,14 +409,16 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                         </div>
                         <div>
                             <h3 className="text-lg font-bold text-slate-700">
-                                {importType === 'xml' ? 'Importar XML de NF-e' : 'Importar Planilha de Peças'}
+                                {importType === 'xml' ? 'Importar XML de NF-e' :
+                                    importType === 'pdf' ? 'Importar PDF (DANFE)' :
+                                        'Importar Planilha de Peças'}
                             </h3>
-                            <p className="text-slate-500 text-sm">Arraste seu arquivo {importType === 'xml' ? 'XML' : 'CSV ou Excel'} aqui</p>
+                            <p className="text-slate-500 text-sm">Arraste seu arquivo {importType === 'xml' ? 'XML' : importType === 'pdf' ? 'PDF' : 'CSV ou Excel'} aqui</p>
                             {importType === 'general' && (
                                 <p className="text-xs text-slate-400 mt-2 font-medium">Colunas recomendadas: Código, Nome, Preço, Qtd, Local</p>
                             )}
-                            {importType === 'xml' && (
-                                <p className="text-xs text-slate-400 mt-2 font-medium">Serão atualizadas as quantidades dos produtos existentes.</p>
+                            {(importType === 'xml' || importType === 'pdf') && (
+                                <p className="text-xs text-slate-400 mt-2 font-medium">Serão atualizadas as quantidades e novos itens serão cadastrados.</p>
                             )}
                         </div>
 
@@ -333,7 +426,7 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                             type="file"
                             ref={fileInputRef}
                             className="hidden"
-                            accept={importType === 'xml' ? '.xml' : '.csv, .xlsx, .xls'}
+                            accept={importType === 'xml' ? '.xml' : importType === 'pdf' ? '.pdf' : '.csv, .xlsx, .xls'}
                             onChange={(e) => {
                                 if (e.target.files && e.target.files.length > 0) {
                                     handleDrop({
