@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Search, Plus, ClipboardList, Camera, CheckSquare, Printer, Trash2 } from 'lucide-react';
+import { Search, Plus, ClipboardList, Camera, CheckSquare, Printer, Trash2, MessageCircle } from 'lucide-react';
 import { OrderStatus, ServiceOrder } from '../types';
 import ClientSearch from '../components/ClientSearch';
 import { supabase } from '../lib/supabase';
+import { QRCodeSVG } from 'qrcode.react';
 
 const ServiceOrders = () => {
   const navigate = useNavigate();
@@ -222,12 +223,20 @@ const ServiceOrders = () => {
           </div>
         </div>
 
-        {/* Terms */}
-        <div className="mb-12 pt-8 border-t border-slate-200">
-          <div className="text-xs text-slate-400 text-justify">
+        {/* Tracking QR Code */}
+        <div className="flex justify-between items-end mb-8 pt-8 border-t border-slate-100">
+          <div className="text-xs text-slate-400 text-justify max-w-[70%]">
             <p className="mb-2"><strong>Condições:</strong> O equipamento será analisado e um orçamento será enviado para aprovação.</p>
             <p className="mb-2">Toda manutenção e peças possuem garantia de 1 ano, exceto por mau uso.</p>
-            <p>O cliente autoriza a abertura e análise do equipamento para diagnóstico.</p>
+            <p>Acompanhe seu reparo online apontando a câmera para o QR Code ao lado.</p>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <QRCodeSVG
+              value={`${window.location.origin}/#/tracking/${order.id}?token=${order.trackingToken}`}
+              size={80}
+              level="M"
+            />
+            <p className="text-[10px] font-bold text-slate-400">RASTREIO ONLINE</p>
           </div>
         </div>
 
@@ -539,7 +548,18 @@ const ServiceOrders = () => {
                 </div>
               </div>
 
-              <div className="p-4 border-t bg-slate-50 flex justify-end gap-2">
+              <div className="p-4 border-t bg-slate-50 flex flex-wrap justify-end gap-2">
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}/#/tracking/${selectedOrder.id}?token=${selectedOrder.trackingToken}`;
+                    navigator.clipboard.writeText(url);
+                    alert('Link de rastreio copiado para o WhatsApp!');
+                  }}
+                  className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 font-bold text-sm flex items-center gap-2"
+                >
+                  <MessageCircle size={18} />
+                  Enviar Rastreio
+                </button>
                 <button
                   onClick={() => window.print()}
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2"

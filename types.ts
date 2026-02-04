@@ -76,6 +76,7 @@ export interface ServiceOrder {
   invoiceNumber?: string;
   technicalReport?: string;
   stockDeducted?: boolean;
+  trackingToken?: string;
 }
 
 export interface User {

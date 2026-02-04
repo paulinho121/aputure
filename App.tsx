@@ -11,6 +11,7 @@ import ServiceOrders from './pages/ServiceOrders';
 import Quotes from './pages/Quotes';
 import Reports from './pages/Reports';
 import Maintenance from './pages/Maintenance';
+import Tracking from './pages/Tracking';
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -57,6 +58,7 @@ const AppContent = () => {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
       <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />
+      <Route path="/tracking/:osId" element={<Tracking />} />
 
       <Route path="/" element={
         <ProtectedRoute>

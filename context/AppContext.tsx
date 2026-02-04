@@ -249,6 +249,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             invoiceNumber: o.invoice_number,
             technicalReport: o.technical_report || '',
             stockDeducted: o.stock_deducted || false,
+            trackingToken: o.tracking_token,
             photos: o.photos || []
           };
         });
@@ -609,6 +610,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           invoice_number: order.invoiceNumber,
           technical_report: order.technicalReport,
           stock_deducted: order.stockDeducted || false,
+          tracking_token: order.trackingToken,
           photos: order.photos
         });
 
@@ -699,6 +701,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           invoice_number: updatedOrder.invoiceNumber,
           technical_report: updatedOrder.technicalReport,
           stock_deducted: updatedOrder.stockDeducted || false,
+          tracking_token: updatedOrder.trackingToken,
           photos: updatedOrder.photos
         })
         .eq('id', updatedOrder.id);
