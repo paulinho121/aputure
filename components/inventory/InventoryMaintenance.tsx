@@ -9,9 +9,9 @@ interface InventoryMaintenanceProps {
 }
 
 const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate }) => {
-    const { brands, bulkAddParts } = useApp();
+    const { brands, bulkAddParts, bulkUpdateQuantities } = useApp();
     const [selectedBrandId, setSelectedBrandId] = useState<string>('');
-    const [importType, setImportType] = useState<'general' | 'csv_text'>('general');
+    const [importType, setImportType] = useState<'general' | 'xml' | 'csv_text'>('general');
     const [isDragOver, setIsDragOver] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [logs, setLogs] = useState<string[]>([]);
@@ -31,12 +31,17 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
         setIsDragOver(false);
     };
 
-    const handleDrop = (e: React.DragEvent) => {
+    const handleDrop = (e: React.DragEvent | { preventDefault: () => void, dataTransfer: { files: FileList } }) => {
         e.preventDefault();
         setIsDragOver(false);
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            processFile(files[0]);
+            const file = files[0];
+            if (file.name.toLowerCase().endsWith('.xml')) {
+                processXmlFile(file);
+            } else {
+                processFile(file);
+            }
         }
     };
 
@@ -48,6 +53,73 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
             return isNaN(num) ? 0 : num;
         }
         return 0;
+    };
+
+    const processXmlFile = async (file: File) => {
+        if (!selectedBrandId) {
+            alert('Por favor, selecione uma marca para associar aos novos itens do XML.');
+            return;
+        }
+
+        setProcessing(true);
+        setLogs(prev => [`Lendo arquivo XML (NF-e): ${file.name}...`, ...prev]);
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const text = e.target?.result as string;
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(text, "text/xml");
+
+                const brand = brands.find(b => b.id === selectedBrandId);
+
+                // Get all product details in NFe format
+                const details = xmlDoc.getElementsByTagName("det");
+                const updates: any[] = [];
+
+                for (let i = 0; i < details.length; i++) {
+                    const prod = details[i].getElementsByTagName("prod")[0];
+                    if (prod) {
+                        const code = prod.getElementsByTagName("cProd")[0]?.textContent;
+                        const name = prod.getElementsByTagName("xProd")[0]?.textContent;
+                        const qty = prod.getElementsByTagName("qCom")[0]?.textContent;
+                        const price = prod.getElementsByTagName("vUnCom")[0]?.textContent;
+
+                        if (code && qty) {
+                            updates.push({
+                                code: code.trim(),
+                                name: name?.trim() || 'Item XML',
+                                quantity: parseFloat(qty),
+                                price: parseFloat(price || '0'),
+                                brandId: selectedBrandId,
+                                manufacturer: brand?.name
+                            });
+                        }
+                    }
+                }
+
+                if (updates.length > 0) {
+                    setLogs(prev => [`Xml validado. Sincronizando ${updates.length} itens...`, ...prev]);
+                    const result = await bulkUpdateQuantities(updates);
+
+                    setLogs(prev => [
+                        `Processamento XML concluído: ${result.success} processados (${result.created} novos cadastros), ${result.errors.length} falhas.`,
+                        ...result.errors.map(err => `FALHA: ${err}`),
+                        ...prev
+                    ]);
+                    onUpdate();
+                } else {
+                    setLogs(prev => [`Nenhum item de NF-e (tags <det><prod>) encontrado no XML.`, ...prev]);
+                }
+
+            } catch (err: any) {
+                console.error('Error processing XML:', err);
+                setLogs(prev => [`Erro fatal XML: ${err.message}`, ...prev]);
+            } finally {
+                setProcessing(false);
+            }
+        };
+        reader.readAsText(file);
     };
 
     const processFile = async (file: File) => {
@@ -187,6 +259,12 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                                 Planilha (Excel/CSV)
                             </button>
                             <button
+                                onClick={() => setImportType('xml')}
+                                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${importType === 'xml' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                            >
+                                XML (NF-e)
+                            </button>
+                            <button
                                 onClick={() => setImportType('csv_text')}
                                 className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${importType === 'csv_text' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
                             >
@@ -197,7 +275,7 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                 </div>
             </div>
 
-            {importType === 'general' ? (
+            {importType === 'general' || importType === 'xml' ? (
                 <div
                     className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${isDragOver ? 'border-blue-500 bg-blue-50' : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50'
                         }`}
@@ -211,20 +289,28 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                         </div>
                         <div>
                             <h3 className="text-lg font-bold text-slate-700">
-                                Importar Planilha de Peças
+                                {importType === 'xml' ? 'Importar XML de NF-e' : 'Importar Planilha de Peças'}
                             </h3>
-                            <p className="text-slate-500 text-sm">Arraste seu arquivo CSV ou Excel aqui</p>
-                            <p className="text-xs text-slate-400 mt-2 font-medium">Colunas recomendadas: Código, Nome, Preço, Qtd, Local</p>
+                            <p className="text-slate-500 text-sm">Arraste seu arquivo {importType === 'xml' ? 'XML' : 'CSV ou Excel'} aqui</p>
+                            {importType === 'general' && (
+                                <p className="text-xs text-slate-400 mt-2 font-medium">Colunas recomendadas: Código, Nome, Preço, Qtd, Local</p>
+                            )}
+                            {importType === 'xml' && (
+                                <p className="text-xs text-slate-400 mt-2 font-medium">Serão atualizadas as quantidades dos produtos existentes.</p>
+                            )}
                         </div>
 
                         <input
                             type="file"
                             ref={fileInputRef}
                             className="hidden"
-                            accept=".csv, .xlsx, .xls"
+                            accept={importType === 'xml' ? '.xml' : '.csv, .xlsx, .xls'}
                             onChange={(e) => {
                                 if (e.target.files && e.target.files.length > 0) {
-                                    processFile(e.target.files[0]);
+                                    handleDrop({
+                                        preventDefault: () => { },
+                                        dataTransfer: { files: e.target.files }
+                                    } as any);
                                 }
                             }}
                         />

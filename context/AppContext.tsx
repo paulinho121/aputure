@@ -11,6 +11,14 @@ interface AppContextType {
   parts: Part[];
   addPart: (part: Part) => Promise<void>;
   bulkAddParts: (parts: Partial<Part>[]) => Promise<void>;
+  bulkUpdateQuantities: (updates: {
+    code: string,
+    quantity: number,
+    name?: string,
+    price?: number,
+    brandId?: string,
+    manufacturer?: string
+  }[]) => Promise<{ success: number, created: number, errors: string[] }>;
   updatePart: (part: Part) => Promise<void>;
   refreshParts: () => Promise<void>;
 
@@ -240,6 +248,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             paymentProofUrl: o.payment_proof_url,
             invoiceNumber: o.invoice_number,
             technicalReport: o.technical_report || '',
+            stockDeducted: o.stock_deducted || false,
             photos: o.photos || []
           };
         });
@@ -356,6 +365,70 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
 
     await fetchParts();
+  };
+
+  const bulkUpdateQuantities = async (updates: {
+    code: string,
+    quantity: number,
+    name?: string,
+    price?: number,
+    brandId?: string,
+    manufacturer?: string
+  }[]) => {
+    const errors: string[] = [];
+    let successCount = 0;
+    let createdCount = 0;
+
+    for (const update of updates) {
+      try {
+        // Find current quantity - using remote to be safe
+        const { data: part, error: fetchError } = await supabase
+          .from('parts')
+          .select('id, quantity, name')
+          .eq('code', update.code)
+          .maybeSingle();
+
+        if (fetchError) throw fetchError;
+
+        if (!part) {
+          // Auto-registration
+          const { error: insertError } = await supabase
+            .from('parts')
+            .insert({
+              name: update.name || 'Novo item (XML)',
+              code: update.code,
+              quantity: update.quantity,
+              price: update.price || 0,
+              brand_id: update.brandId,
+              manufacturer: update.manufacturer,
+              category: 'Importado (XML)',
+              min_stock: 5
+            });
+
+          if (insertError) throw insertError;
+          createdCount++;
+          successCount++;
+          continue;
+        }
+
+        const newQuantity = (part.quantity || 0) + update.quantity;
+
+        const { error: updateError } = await supabase
+          .from('parts')
+          .update({ quantity: newQuantity })
+          .eq('id', part.id);
+
+        if (updateError) throw updateError;
+        successCount++;
+
+      } catch (err: any) {
+        console.error(`Error processing part ${update.code}:`, err);
+        errors.push(`Erro em ${update.code}: ${err.message}`);
+      }
+    }
+
+    await fetchParts();
+    return { success: successCount, created: createdCount, errors };
   };
 
   const updatePart = async (updatedPart: Part) => {
@@ -535,6 +608,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           payment_proof_url: order.paymentProofUrl,
           invoice_number: order.invoiceNumber,
           technical_report: order.technicalReport,
+          stock_deducted: order.stockDeducted || false,
           photos: order.photos
         });
 
@@ -576,6 +650,33 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const updateOrder = async (updatedOrder: ServiceOrder) => {
     try {
+      // Find the current state of the order to detect status change
+      const oldOrder = orders.find(o => o.id === updatedOrder.id);
+
+      // Smart Stock Management:
+      // If moving to an 'Active' status and stock hasn't been deducted yet
+      const activeStatuses: string[] = [
+        OrderStatus.IN_REPAIR,
+        OrderStatus.COMPLETED,
+        OrderStatus.DELIVERED,
+        OrderStatus.WAITING_PARTS
+      ];
+
+      if (activeStatuses.includes(updatedOrder.status) && !oldOrder?.stockDeducted) {
+        console.log(`[DEBUG] Order ${updatedOrder.id} approved! Deducting stock...`);
+
+        for (const item of updatedOrder.items) {
+          const part = parts.find(p => p.id === item.partId);
+          if (part) {
+            const newQty = (part.quantity || 0) - item.quantity;
+            await supabase.from('parts').update({ quantity: newQty }).eq('id', part.id);
+            console.log(`[DEBUG] Stock updated for ${part.name}: ${part.quantity} -> ${newQty}`);
+          }
+        }
+
+        updatedOrder.stockDeducted = true;
+      }
+
       // Update order in database
       const { error: orderError } = await supabase
         .from('service_orders')
@@ -597,6 +698,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           payment_proof_url: updatedOrder.paymentProofUrl,
           invoice_number: updatedOrder.invoiceNumber,
           technical_report: updatedOrder.technicalReport,
+          stock_deducted: updatedOrder.stockDeducted || false,
           photos: updatedOrder.photos
         })
         .eq('id', updatedOrder.id);
@@ -686,7 +788,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider value={{
       user, login, signup, logout,
-      parts, addPart, bulkAddParts, updatePart, refreshParts: fetchParts,
+      parts, addPart, bulkAddParts, bulkUpdateQuantities, updatePart, refreshParts: fetchParts,
       brands, addBrand, refreshBrands: fetchBrands,
       clients, addClient, updateClient,
       orders, addOrder, updateOrder, deleteOrder
