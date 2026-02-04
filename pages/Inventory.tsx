@@ -5,10 +5,10 @@ import { Part } from '../types';
 import InventoryMaintenance from '../components/inventory/InventoryMaintenance';
 
 const Inventory = () => {
-  const { parts, addPart, updatePart, refreshParts } = useApp();
+  const { parts, addPart, updatePart, refreshParts, brands, addBrand } = useApp();
   const [activeTab, setActiveTab] = useState<'list' | 'maintenance'>('list');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [manufacturerFilter, setManufacturerFilter] = useState<'all' | 'Aputure' | 'Astera' | 'Cream Source'>('all'); // Add filter state
+  const [manufacturerFilter, setManufacturerFilter] = useState<string>('all'); // Add filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -100,8 +100,8 @@ const Inventory = () => {
       {activeTab === 'list' ? (
         <>
           <div className="flex flex-col gap-4">
-            {/* Manufacturer Filter Buttons */}
-            <div className="grid grid-cols-2 sm:flex gap-2">
+            {/* Brand Filter Buttons */}
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setManufacturerFilter('all')}
                 className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border transition-all ${manufacturerFilter === 'all'
@@ -111,36 +111,19 @@ const Inventory = () => {
               >
                 Todos
               </button>
-              <button
-                onClick={() => setManufacturerFilter('Aputure')}
-                className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border transition-all flex items-center gap-1 sm:gap-2 justify-center ${manufacturerFilter === 'Aputure'
-                  ? 'bg-red-600 text-white border-red-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                  }`}
-              >
-                <img src="/aputure-logo.png" alt="Aputure" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" />
-                <span className="hidden xs:inline">Aputure</span>
-              </button>
-              <button
-                onClick={() => setManufacturerFilter('Astera')}
-                className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border transition-all flex items-center gap-1 sm:gap-2 justify-center ${manufacturerFilter === 'Astera'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                  }`}
-              >
-                <img src="/astera-logo.png" alt="Astera" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" />
-                <span className="hidden xs:inline">Astera</span>
-              </button>
-              <button
-                onClick={() => setManufacturerFilter('Cream Source')}
-                className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border transition-all flex items-center gap-1 sm:gap-2 justify-center ${manufacturerFilter === 'Cream Source'
-                  ? 'bg-emerald-600 text-white border-emerald-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                  }`}
-              >
-                <img src="/creamsource-logo.png" alt="Cream Source" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" />
-                <span className="hidden xs:inline">Cream</span>
-              </button>
+              {brands.map(brand => (
+                <button
+                  key={brand.id}
+                  onClick={() => setManufacturerFilter(brand.name as any)}
+                  className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-bold border transition-all flex items-center gap-1 sm:gap-2 justify-center ${manufacturerFilter === brand.name
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                >
+                  {brand.logoUrl && <img src={brand.logoUrl} alt={brand.name} className="w-4 h-4 sm:w-5 sm:h-5 object-contain" />}
+                  <span>{brand.name}</span>
+                </button>
+              ))}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2">
@@ -168,6 +151,17 @@ const Inventory = () => {
               >
                 <Plus size={18} />
                 Nova Peça
+              </button>
+
+              <button
+                onClick={() => {
+                  const name = prompt('Nome da nova marca:');
+                  if (name) addBrand(name);
+                }}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors border border-slate-200 w-full sm:w-auto"
+              >
+                <Database size={18} />
+                Cadastrar Marca
               </button>
             </div>
           </div>
@@ -302,12 +296,20 @@ const Inventory = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Fabricante</label>
                   <select
                     className="w-full p-2 border rounded-lg"
-                    value={formData.manufacturer || 'Aputure'}
-                    onChange={e => setFormData({ ...formData, manufacturer: e.target.value as any })}
+                    value={formData.brandId || ''}
+                    onChange={e => {
+                      const brand = brands.find(b => b.id === e.target.value);
+                      setFormData({
+                        ...formData,
+                        brandId: e.target.value,
+                        manufacturer: brand?.name
+                      });
+                    }}
                   >
-                    <option value="Aputure">Aputure</option>
-                    <option value="Astera">Astera</option>
-                    <option value="Cream Source">Cream Source</option>
+                    <option value="">Selecione uma marca</option>
+                    {brands.map(brand => (
+                      <option key={brand.id} value={brand.id}>{brand.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

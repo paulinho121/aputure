@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Client, Part, ServiceOrder, User, OrderStatus, ServiceOrderItem } from '../types';
+import { Client, Part, ServiceOrder, User, OrderStatus, ServiceOrderItem, Brand } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface AppContextType {
@@ -10,8 +10,13 @@ interface AppContextType {
 
   parts: Part[];
   addPart: (part: Part) => Promise<void>;
+  bulkAddParts: (parts: Partial<Part>[]) => Promise<void>;
   updatePart: (part: Part) => Promise<void>;
   refreshParts: () => Promise<void>;
+
+  brands: Brand[];
+  addBrand: (name: string, logoUrl?: string) => Promise<Brand | null>;
+  refreshBrands: () => Promise<void>;
 
   clients: Client[];
   addClient: (client: Client) => void;
@@ -28,6 +33,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [parts, setParts] = useState<Part[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
 
@@ -58,6 +64,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
+    fetchBrands();
     fetchParts();
     fetchClients();
     fetchOrders();
@@ -68,103 +75,83 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const fetchParts = async () => {
     try {
       console.log('[DEBUG] Starting fetchParts...');
-      let allParts: any[] = [];
-      const seenIds = new Set<string>();
-      const seenKeys = new Set<string>();
-      let stats = { parts: 0, astera: 0, cream: 0 };
+      const { data, error } = await supabase
+        .from('parts')
+        .select(`
+          *,
+          brands (
+            id,
+            name,
+            logo_url
+          )
+        `);
 
-      // 1. Fetch from 'parts' (Unified / Aputure)
-      try {
-        const { data, error } = await supabase.from('parts').select('*');
-        if (error) {
-          console.error('[DEBUG] Error fetching parts table:', error);
-        } else if (data) {
-          stats.parts = data.length;
-          data.forEach(p => {
-            const manuf = p.manufacturer || 'Aputure';
-            allParts.push({ ...p, manufacturer: manuf });
-            seenIds.add(p.id);
-            seenKeys.add(`${p.code}-${manuf}`);
-          });
-        }
-      } catch (err) {
-        console.error('[DEBUG] Catch in parts fetch:', err);
+      if (error) {
+        console.error('[DEBUG] Error fetching parts:', error);
+        return;
       }
 
-      // 2. Fetch from 'astera_parts'
-      try {
-        const { data, error } = await supabase.from('astera_parts').select('*');
-        if (error) {
-          console.warn('[DEBUG] Error fetching astera_parts:', error);
-        } else if (data) {
-          stats.astera = data.length;
-          data.forEach(p => {
-            const key = `${p.code}-Astera`;
-            if (!seenIds.has(p.id) && !seenKeys.has(key)) {
-              allParts.push({ ...p, manufacturer: 'Astera' });
-              seenIds.add(p.id);
-              seenKeys.add(key);
-            }
-          });
-        }
-      } catch (err) {
-        console.warn('[DEBUG] Catch in astera_parts fetch:', err);
-      }
-
-      // 3. Fetch from 'cream_source_parts'
-      try {
-        const { data, error } = await supabase.from('cream_source_parts').select('*');
-        if (error) {
-          console.warn('[DEBUG] Error fetching cream_source_parts:', error);
-        } else if (data) {
-          stats.cream = data.length;
-          data.forEach(p => {
-            const key = `${p.code}-Cream Source`;
-            if (!seenIds.has(p.id) && !seenKeys.has(key)) {
-              allParts.push({ ...p, manufacturer: 'Cream Source' });
-              seenIds.add(p.id);
-              seenKeys.add(key);
-            }
-          });
-        }
-      } catch (err) {
-        console.warn('[DEBUG] Catch in cream_source_parts fetch:', err);
-      }
-
-      const mappedParts: Part[] = allParts.map(p => {
-        try {
-          return {
-            id: p.id || Math.random().toString(),
-            name: String(p.name || 'Sem nome'),
-            code: String(p.code || 'S/C'),
-            category: String(p.category || 'Geral'),
-            quantity: Number(p.quantity || 0),
-            minStock: Number(p.min_stock || 0),
-            price: typeof p.price === 'number' ? p.price : (parseFloat(String(p.price || 0).replace(',', '.')) || 0),
-            location: String(p.location || ''),
-            imageUrl: String(p.image_url || 'https://picsum.photos/200'),
-            manufacturer: (p.manufacturer || 'Aputure') as any,
-            unitsPerPackage: Number(p.units_per_package || 1)
-          };
-        } catch (mErr) {
-          console.error('[DEBUG] Mapping error for part:', p, mErr);
-          return null;
-        }
-      }).filter(p => p !== null) as Part[];
+      const mappedParts: Part[] = data.map(p => ({
+        id: p.id,
+        name: p.name || 'Sem nome',
+        code: p.code || 'S/C',
+        brandId: p.brand_id,
+        category: p.category || 'Geral',
+        quantity: Number(p.quantity || 0),
+        minStock: Number(p.min_stock || 0),
+        price: Number(p.price || 0),
+        location: p.location || '',
+        imageUrl: p.image_url || 'https://picsum.photos/200',
+        manufacturer: p.brands?.name || p.manufacturer || 'Aputure',
+        unitsPerPackage: Number(p.units_per_package || 1)
+      }));
 
       mappedParts.sort((a, b) => a.name.localeCompare(b.name));
-
-      console.log(`[DEBUG] Final total parts mapped: ${mappedParts.length}`, stats);
-
-      // If we found zero parts but no errors, it's very strange, so we log it
-      if (mappedParts.length === 0 && (stats.parts > 0 || stats.astera > 0 || stats.cream > 0)) {
-        console.error('[DEBUG] ERROR: Data was found in tables but mapping resulted in 0 items.');
-      }
-
       setParts(mappedParts);
     } catch (err) {
       console.error('[DEBUG] Fatal error in fetchParts:', err);
     }
+  };
+
+  const fetchBrands = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('brands')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching brands:', error);
+        return;
+      }
+
+      if (data) {
+        setBrands(data.map(b => ({
+          id: b.id,
+          name: b.name,
+          logoUrl: b.logo_url
+        })));
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching brands:', err);
+    }
+  };
+
+  const addBrand = async (name: string, logoUrl?: string) => {
+    const { data, error } = await supabase
+      .from('brands')
+      .insert({ name, logo_url: logoUrl })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding brand:', error);
+      alert('Erro ao adicionar marca: ' + error.message);
+      return null;
+    }
+
+    await fetchBrands();
+    return data as Brand;
   };
 
   const fetchClients = async () => {
@@ -305,8 +292,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     // Optimistic update
     setParts([...parts, part]);
 
-    // Save to DB
-    const { error } = await supabase.from('parts').insert({
+    // Save to DB - Try with new schema first
+    let { error } = await supabase.from('parts').insert({
       name: part.name,
       code: part.code,
       category: part.category,
@@ -315,9 +302,26 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       price: part.price,
       location: part.location,
       image_url: part.imageUrl,
-      manufacturer: part.manufacturer || 'Aputure',
+      manufacturer: part.manufacturer,
+      brand_id: part.brandId,
       units_per_package: part.unitsPerPackage || 1
     });
+
+    // Fallback: If columns don't exist, try plain insert (old schema)
+    if (error && (error.message.includes('column "manufacturer" does not exist') || error.message.includes('column "units_per_package" does not exist'))) {
+      console.warn('[DEBUG] New columns missing in "parts", retrying simple insert...');
+      const { error: fallbackError } = await supabase.from('parts').insert({
+        name: part.name,
+        code: part.code,
+        category: part.category,
+        quantity: part.quantity,
+        min_stock: part.minStock,
+        price: part.price,
+        location: part.location,
+        image_url: part.imageUrl
+      });
+      error = fallbackError;
+    }
 
     if (error) {
       console.error('Error adding part:', error);
@@ -327,6 +331,31 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     } else {
       await fetchParts(); // Refresh to get the real ID from DB
     }
+  };
+
+  const bulkAddParts = async (newParts: Partial<Part>[]) => {
+    const partsToInsert = newParts.map(p => ({
+      name: p.name,
+      code: p.code,
+      category: p.category,
+      quantity: p.quantity,
+      min_stock: p.minStock,
+      price: p.price,
+      location: p.location,
+      image_url: p.imageUrl,
+      manufacturer: p.manufacturer,
+      brand_id: p.brandId,
+      units_per_package: p.unitsPerPackage || 1
+    }));
+
+    const { error } = await supabase.from('parts').insert(partsToInsert);
+
+    if (error) {
+      console.error('Error in bulk insert:', error);
+      throw error;
+    }
+
+    await fetchParts();
   };
 
   const updatePart = async (updatedPart: Part) => {
@@ -343,6 +372,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       location: updatedPart.location,
       image_url: updatedPart.imageUrl,
       manufacturer: updatedPart.manufacturer,
+      brand_id: updatedPart.brandId,
       units_per_package: updatedPart.unitsPerPackage
     }).eq('id', updatedPart.id);
 
@@ -656,7 +686,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider value={{
       user, login, signup, logout,
-      parts, addPart, updatePart, refreshParts: fetchParts,
+      parts, addPart, bulkAddParts, updatePart, refreshParts: fetchParts,
+      brands, addBrand, refreshBrands: fetchBrands,
       clients, addClient, updateClient,
       orders, addOrder, updateOrder, deleteOrder
     }}>

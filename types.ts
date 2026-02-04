@@ -9,17 +9,24 @@ export enum OrderStatus {
   DELIVERED = 'Entregue'
 }
 
+export interface Brand {
+  id: string;
+  name: string;
+  logoUrl?: string;
+}
+
 export interface Part {
   id: string;
   name: string;
   code: string;
+  brandId?: string; // Link to Brand table
   category: string;
   quantity: number;
   minStock: number;
   price: number;
   location: string;
   imageUrl?: string;
-  manufacturer?: 'Aputure' | 'Astera' | 'Cream Source';
+  manufacturer?: 'Aputure' | 'Astera' | 'Cream Source' | string;
   unitsPerPackage?: number;
 }
 
