@@ -73,17 +73,41 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
 
                 const brand = brands.find(b => b.id === selectedBrandId);
 
+                // Helper to get element text regardless of namespace/prefix
+                const getTag = (parent: Element, tagName: string) => {
+                    const el = parent.getElementsByTagName(tagName)[0] ||
+                        parent.getElementsByTagNameNS("*", tagName)[0];
+                    return el?.textContent || null;
+                };
+
+                // Check if it's an event (like Ciência da Operação) which doesn't have items
+                const isEvent = xmlDoc.getElementsByTagName("procEventoNFe").length > 0 ||
+                    xmlDoc.getElementsByTagNameNS("*", "procEventoNFe").length > 0;
+
+                if (isEvent) {
+                    setLogs(prev => ["AVISO: Este arquivo parece ser um EVENTO (Ciência/Cancelamento) e não contém os itens da nota. Você precisa do XML da NF-e completa.", ...prev]);
+                    setProcessing(false);
+                    return;
+                }
+
                 // Get all product details in NFe format
-                const details = xmlDoc.getElementsByTagName("det");
+                let details = xmlDoc.getElementsByTagName("det");
+                if (details.length === 0) {
+                    details = xmlDoc.getElementsByTagNameNS("*", "det");
+                }
+
                 const updates: any[] = [];
 
                 for (let i = 0; i < details.length; i++) {
-                    const prod = details[i].getElementsByTagName("prod")[0];
+                    const det = details[i];
+                    const prod = det.getElementsByTagName("prod")[0] ||
+                        det.getElementsByTagNameNS("*", "prod")[0];
+
                     if (prod) {
-                        const code = prod.getElementsByTagName("cProd")[0]?.textContent;
-                        const name = prod.getElementsByTagName("xProd")[0]?.textContent;
-                        const qty = prod.getElementsByTagName("qCom")[0]?.textContent;
-                        const price = prod.getElementsByTagName("vUnCom")[0]?.textContent;
+                        const code = getTag(prod, "cProd");
+                        const name = getTag(prod, "xProd");
+                        const qty = getTag(prod, "qCom");
+                        const price = getTag(prod, "vUnCom");
 
                         if (code && qty) {
                             updates.push({
@@ -109,7 +133,12 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                     ]);
                     onUpdate();
                 } else {
-                    setLogs(prev => [`Nenhum item de NF-e (tags <det><prod>) encontrado no XML.`, ...prev]);
+                    const allTags = Array.from(xmlDoc.querySelectorAll('*')).slice(0, 10).map(t => t.tagName).join(', ');
+                    setLogs(prev => [
+                        `Nenhum item encontrado. Tags detectadas no início: ${allTags}`,
+                        "Verifique se este é o XML da nota fiscal (NF-e) ou se é um resumo/evento.",
+                        ...prev
+                    ]);
                 }
 
             } catch (err: any) {
