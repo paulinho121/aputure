@@ -166,8 +166,10 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
         try {
             // Dynamically import pdfjs-dist
             const pdfjs = await import('pdfjs-dist');
-            // Set worker from CDN for simplicity in browser
-            pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+            const version = pdfjs.version || '5.4.624';
+
+            // Try to use a more stable CDN for the worker
+            pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
 
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
