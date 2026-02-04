@@ -181,29 +181,61 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
             }
 
             console.log("PDF Extracted Text:", fullText);
+            // DEBUG: Show first 500 chars in logs to help the user identify it
+            setLogs(prev => [`Texto extraído (amostra): ${fullText.substring(0, 100)}...`, ...prev]);
 
             const brand = brands.find(b => b.id === selectedBrandId);
             const updates: any[] = [];
 
-            // Pattern for DANFE items (heuristic)
-            // Código (1) Descrição (2) NCM (3) CST CFOP UNID QUANT (4) V.UNIT (5)
-            // Example: 123456 PECA TESTE 12345678 000 5102 UN 10,00 100,00
-            // We search for NCM (8 digits) followed by a sequence of data
-            const itemRegex = /(\S+)\s+(.+?)\s+(\d{8})\s+\d{3,4}\s+\d{4}\s+[A-Z]{1,4}\s+([\d.,]+)\s+([\d.,]+)/g;
+            // More flexible pattern for DANFE items
+            // 1. Code (\S+)
+            // 2. Name (.+?)
+            // 3. NCM (\d{2,8}) - sometimes NCM is shorthanded or has spaces
+            // 4. CST/CFOP/UN/QTY/PRICE/TOTAL
+            // We'll try a more greedy approach for the names and look for numbers
+            const lines = fullText.split('\n');
+
+            // Regex to find potential rows: Code, followed by text, then an NCM (8 digits)
+            const itemRegex = /(\S+)\s+([A-Z0-9\s\-\/\.]+?)\s+(\d{8})\s+\d{3,4}\s+\d{4}\s+/g;
+
+            // Alternatively, let's try to find lines that look like product rows
+            // Most DANFEs have: CODIGO | DESCRICAO | NCM | CST | CFOP | UN | QTD | V.UNIT
+            // We can look for the QTD and V.UNIT near the end of the matches
 
             let match;
             while ((match = itemRegex.exec(fullText)) !== null) {
                 const code = match[1];
                 const name = match[2];
-                const qtyStr = match[4];
-                const priceStr = match[5];
+                // After the CFOP we usually have UN, QTD, V.UNIT
+                // Let's grab the text following the match to find the numbers
+                const followingText = fullText.substring(match.index + match[0].length, match.index + match[0].length + 100);
+                const numbersMatch = followingText.match(/([A-Z]{2,4})\s+([\d.,]+)\s+([\d.,]+)/);
 
-                if (code && name && qtyStr) {
+                if (numbersMatch) {
+                    const qtyStr = numbersMatch[2];
+                    const priceStr = numbersMatch[3];
+
                     updates.push({
                         code: code.trim(),
                         name: name.trim(),
                         quantity: parseFloat(qtyStr.replace('.', '').replace(',', '.')),
                         price: parseFloat(priceStr.replace('.', '').replace(',', '.')),
+                        brandId: selectedBrandId,
+                        manufacturer: brand?.name
+                    });
+                }
+            }
+
+            if (updates.length === 0) {
+                // FALLBACK: Try a simpler match for common DANFEs if the first one failed
+                // Look for: [CODE] [DESCRIPTION] [NCM] ... [QTY] [PRICE]
+                const fallbackRegex = /(\S+)\s+(.+?)\s+(\d{8}).*?\s+([\d.,]+)\s+([\d.,]+)\s+[\d.,]+/g;
+                while ((match = fallbackRegex.exec(fullText)) !== null) {
+                    updates.push({
+                        code: match[1]?.trim(),
+                        name: match[2]?.trim(),
+                        quantity: parseFloat(match[4].replace('.', '').replace(',', '.')),
+                        price: parseFloat(match[5].replace('.', '').replace(',', '.')),
                         brandId: selectedBrandId,
                         manufacturer: brand?.name
                     });
@@ -268,11 +300,11 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                         name: row['Nome'] || row['Nome da Peça'] || 'Peça sem nome',
                         price: cleanCurrency(row['Preço'] || row['Valor'] || row['Price'] || 0),
                         quantity: parseInt(row['Qtd'] || row['Quantidade'] || row['Contagem'] || '0'),
-                        location: row['Local'] || row['Localização'] || row['Prateleira'] || '',
+                        location: 'Aguardando Alocação',
                         unitsPerPackage: parseInt(row['Unid. no pacote'] || row['Units'] || '1'),
                         brandId: selectedBrandId,
                         manufacturer: brand?.name,
-                        category: row['Categoria'] || 'Geral',
+                        category: row['Categoria'] || 'Importado',
                         minStock: 5
                     });
                 }
@@ -316,13 +348,13 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
                 if (code && name) {
                     partsToInsert.push({
                         code,
-                        name,
+                        name: name, // Using provided name or placeholder
                         price: cleanCurrency(price || 0),
                         quantity: parseInt(qty || '0'),
-                        location: loc || '',
+                        location: 'Aguardando Alocação',
                         brandId: selectedBrandId,
                         manufacturer: brand?.name,
-                        category: 'Geral',
+                        category: 'Importado (Massa)',
                         minStock: 5
                     });
                 }
@@ -450,13 +482,13 @@ const InventoryMaintenance: React.FC<InventoryMaintenanceProps> = ({ onUpdate })
             ) : (
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                     <div>
-                        <h3 className="font-bold text-slate-800 mb-1">Inserção em Massa (Texto)</h3>
+                        <h3 className="font-bold text-slate-800 mb-1">Entrada em Massa (Rápida)</h3>
                         <p className="text-xs text-slate-500 mb-4">
-                            Cole os dados formatados como: <b>Código; Nome; Preço; Qtd; Local</b> (um por linha)
+                            Formato: <b>Código; Nome; Quantidade; Preço</b> (um por linha)
                         </p>
                         <textarea
                             className="w-full h-48 p-4 border rounded-lg font-mono text-sm bg-slate-50 focus:ring-2 focus:ring-blue-500/20 outline-none"
-                            placeholder="APT-LS600; Aputure LS 600d; 8500; 5; Prateleira A1"
+                            placeholder="APT-LS600; Aputure LS 600d; 5; 8500"
                             value={csvText}
                             onChange={(e) => setCsvText(e.target.value)}
                         />
