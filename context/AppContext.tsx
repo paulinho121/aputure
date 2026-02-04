@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Client, Part, ServiceOrder, User, OrderStatus, ServiceOrderItem, Brand } from '../types';
+import { Brand, Client, OrderStatus, Part, ServiceOrder, User, Settings, ServiceOrderItem } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface AppContextType {
@@ -31,9 +31,11 @@ interface AppContextType {
   updateClient: (client: Client) => void;
 
   orders: ServiceOrder[];
-  addOrder: (order: ServiceOrder) => void;
-  updateOrder: (order: ServiceOrder) => void;
+  addOrder: (order: ServiceOrder) => Promise<void>;
+  updateOrder: (order: ServiceOrder) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
+  settings: Settings | null;
+  updateSettings: (settings: Partial<Settings>) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -44,6 +46,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
     // Check for existing session
@@ -72,13 +75,77 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    fetchBrands();
-    fetchParts();
-    fetchClients();
-    fetchOrders();
+    fetchEverything();
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchUser = async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      setUser({
+        id: authUser.id,
+        name: authUser.user_metadata.name || 'Usuário',
+        email: authUser.email || '',
+        role: 'admin'
+      });
+    } else {
+      setUser(null);
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('*')
+        .eq('id', 'global')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setSettings({
+          id: data.id,
+          techName: data.tech_name,
+          techEmail: data.tech_email,
+          techPhone: data.tech_phone
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+    }
+  };
+
+  const updateSettings = async (updates: Partial<Settings>) => {
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .update({
+          tech_name: updates.techName,
+          tech_email: updates.techEmail,
+          tech_phone: updates.techPhone,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', 'global');
+
+      if (error) throw error;
+      await fetchSettings();
+    } catch (err) {
+      console.error('Error updating settings:', err);
+      throw err;
+    }
+  };
+
+  const fetchEverything = async () => {
+    await Promise.all([
+      fetchUser(),
+      fetchParts(),
+      fetchClients(),
+      fetchOrders(),
+      fetchBrands(),
+      fetchSettings()
+    ]);
+  };
 
   const fetchParts = async () => {
     try {
@@ -86,13 +153,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase
         .from('parts')
         .select(`
-          *,
-          brands (
-            id,
-            name,
-            logo_url
-          )
-        `);
+  *,
+  brands(
+    id,
+    name,
+    logo_url
+  )
+    `);
 
       if (error) {
         console.error('[DEBUG] Error fetching parts:', error);
@@ -423,8 +490,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         successCount++;
 
       } catch (err: any) {
-        console.error(`Error processing part ${update.code}:`, err);
-        errors.push(`Erro em ${update.code}: ${err.message}`);
+        console.error(`Error processing part ${update.code}: `, err);
+        errors.push(`Erro em ${update.code}: ${err.message} `);
       }
     }
 
@@ -535,7 +602,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const { data: exists } = await supabase.from('parts').select('id').eq('id', item.partId).maybeSingle();
 
         if (!exists) {
-          console.log(`[DEBUG] Part ${item.partId} not found in 'parts' table. Attempting auto-migration...`);
+          console.log(`[DEBUG] Part ${item.partId} not found in 'parts' table.Attempting auto - migration...`);
           const partToMigrate = parts.find(p => p.id === item.partId);
 
           if (partToMigrate) {
@@ -572,9 +639,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             }
 
             if (migError) {
-              console.error(`[DEBUG] Auto-migration failed for ${partToMigrate.name}:`, migError);
+              console.error(`[DEBUG] Auto - migration failed for ${partToMigrate.name}: `, migError);
             } else {
-              console.log(`[DEBUG] Auto-migration successful for ${partToMigrate.name}`);
+              console.log(`[DEBUG] Auto - migration successful for ${partToMigrate.name}`);
             }
           }
         }
@@ -672,7 +739,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           if (part) {
             const newQty = (part.quantity || 0) - item.quantity;
             await supabase.from('parts').update({ quantity: newQty }).eq('id', part.id);
-            console.log(`[DEBUG] Stock updated for ${part.name}: ${part.quantity} -> ${newQty}`);
+            console.log(`[DEBUG] Stock updated for ${part.name}: ${part.quantity} -> ${newQty} `);
           }
         }
 
@@ -794,7 +861,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       parts, addPart, bulkAddParts, bulkUpdateQuantities, updatePart, refreshParts: fetchParts,
       brands, addBrand, refreshBrands: fetchBrands,
       clients, addClient, updateClient,
-      orders, addOrder, updateOrder, deleteOrder
+      orders, addOrder, updateOrder, deleteOrder,
+      settings, updateSettings
     }}>
       {children}
     </AppContext.Provider>

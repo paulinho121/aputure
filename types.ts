@@ -79,6 +79,13 @@ export interface ServiceOrder {
   trackingToken?: string;
 }
 
+export interface Settings {
+  id: string;
+  techName: string;
+  techEmail: string;
+  techPhone: string;
+}
+
 export interface User {
   id: string;
   name: string;

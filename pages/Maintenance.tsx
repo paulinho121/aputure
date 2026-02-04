@@ -1,11 +1,29 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Download, Database, Server, Users, Wrench, Package, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { Download, Database, Server, Users, Wrench, Package, AlertTriangle, CheckCircle, Loader2, Mail, Phone } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 const Maintenance = () => {
+    const { settings, updateSettings } = useApp();
     const [loading, setLoading] = useState<string | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'informative' | 'error'; text: string } | null>(null);
     const [firstError, setFirstError] = useState<string | null>(null);
+    const [techData, setTechData] = useState({
+        techName: settings?.techName || '',
+        techEmail: settings?.techEmail || '',
+        techPhone: settings?.techPhone || ''
+    });
+
+    // Update local state when settings are loaded from context
+    React.useEffect(() => {
+        if (settings) {
+            setTechData({
+                techName: settings.techName,
+                techEmail: settings.techEmail,
+                techPhone: settings.techPhone
+            });
+        }
+    }, [settings]);
 
     const downloadFile = (data: any, filename: string) => {
         const jsonString = JSON.stringify(data, null, 2);
@@ -251,6 +269,19 @@ const Maintenance = () => {
         }
     };
 
+    const handleSaveSettings = async () => {
+        setLoading('settings');
+        setMessage(null);
+        try {
+            await updateSettings(techData);
+            setMessage({ type: 'success', text: 'Configurações do técnico atualizadas com sucesso!' });
+        } catch (error: any) {
+            setMessage({ type: 'error', text: 'Erro ao salvar configurações: ' + error.message });
+        } finally {
+            setLoading(null);
+        }
+    };
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -381,22 +412,62 @@ const Maintenance = () => {
                 </div>
 
                 {/* Info Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white h-fit">
-                    <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                        <AlertTriangle className="text-amber-400" /> Importante
-                    </h2>
-                    <div className="space-y-4 text-slate-300 text-sm">
-                        <p>
-                            Mantenha seus backups em local seguro e externo ao sistema.
-                        </p>
-                        <p>
-                            O backup é gerado no formato <strong>JSON</strong> (JavaScript Object Notation), que é um formato padrão universal para dados. Ele pode ser importado futuramente caso necessário.
-                        </p>
-                        <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600 mt-6">
-                            <p className="text-xs text-slate-400 uppercase tracking-wider font-bold mb-2">Segurança</p>
-                            <p>Seus dados estão seguros na nuvem da Supabase, mas é uma boa prática realizar backups semanais para garantir redundância.</p>
-                        </div>
+            </div>
+
+            {/* Technician Settings Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:col-span-2">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                        <Users size={24} />
                     </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-800">Dados do Técnico (Rastreamento)</h2>
+                        <p className="text-sm text-slate-500">Estas informações aparecerão no link de rastreio para o cliente</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Nome do Técnico</label>
+                        <input
+                            type="text"
+                            className="w-full p-3 bg-slate-50 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/20"
+                            value={techData.techName}
+                            onChange={(e) => setTechData({ ...techData, techName: e.target.value })}
+                            placeholder="Ex: Técnico Responsável"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">E-mail de Contato</label>
+                        <input
+                            type="email"
+                            className="w-full p-3 bg-slate-50 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/20"
+                            value={techData.techEmail}
+                            onChange={(e) => setTechData({ ...techData, techEmail: e.target.value })}
+                            placeholder="os@mcistore.com.br"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">WhatsApp (DDI+DDD+Número)</label>
+                        <input
+                            type="text"
+                            className="w-full p-3 bg-slate-50 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/20"
+                            value={techData.techPhone}
+                            onChange={(e) => setTechData({ ...techData, techPhone: e.target.value })}
+                            placeholder="5511999999999"
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-6 pt-6 border-t flex justify-end">
+                    <button
+                        onClick={handleSaveSettings}
+                        disabled={loading === 'settings'}
+                        className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+                    >
+                        {loading === 'settings' ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle size={20} />}
+                        Salvar Configurações
+                    </button>
                 </div>
             </div>
         </div>

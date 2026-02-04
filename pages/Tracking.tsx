@@ -10,6 +10,7 @@ const Tracking = () => {
     const token = searchParams.get('token');
 
     const [order, setOrder] = useState<ServiceOrder | null>(null);
+    const [settings, setSettings] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +31,21 @@ const Tracking = () => {
                     .maybeSingle();
 
                 if (fetchError) throw fetchError;
+
+                // Fetch Settings
+                const { data: settingsData } = await supabase
+                    .from('settings')
+                    .select('*')
+                    .eq('id', 'global')
+                    .maybeSingle();
+
+                if (settingsData) {
+                    setSettings({
+                        techPhone: settingsData.tech_phone,
+                        techEmail: settingsData.tech_email,
+                        techName: settingsData.tech_name
+                    });
+                }
 
                 if (!data) {
                     setError('Ordem de Serviço não encontrada ou token inválido.');
@@ -189,7 +205,7 @@ const Tracking = () => {
 
                 {/* WhatsApp Help */}
                 <a
-                    href={`https://wa.me/5511999999999?text=Olá, gostaria de falar sobre minha OS: ${order.id}`}
+                    href={`https://wa.me/${settings?.techPhone || '5511999999999'}?text=Olá, gostaria de falar sobre minha OS: ${order.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-3 bg-emerald-600 text-white p-4 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-transform"
