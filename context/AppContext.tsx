@@ -52,23 +52,29 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setUser({
-          id: session.user.id,
-          name: session.user.user_metadata.name || 'Usuário',
-          email: session.user.email || '',
-          role: 'admin'
+        // Fetch profile
+        supabase.from('profiles').select('is_master').eq('id', session.user.id).maybeSingle().then(({ data: profile }) => {
+          setUser({
+            id: session.user.id,
+            name: session.user.user_metadata.name || 'Usuário',
+            email: session.user.email || '',
+            role: 'admin',
+            is_master: profile?.is_master || false
+          });
         });
       }
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
+        const { data: profile } = await supabase.from('profiles').select('is_master').eq('id', session.user.id).maybeSingle();
         setUser({
           id: session.user.id,
           name: session.user.user_metadata.name || 'Usuário',
           email: session.user.email || '',
-          role: 'admin'
+          role: 'admin',
+          is_master: profile?.is_master || false
         });
       } else {
         setUser(null);
@@ -83,11 +89,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const fetchUser = async () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
+      const { data: profile } = await supabase.from('profiles').select('is_master').eq('id', authUser.id).maybeSingle();
       setUser({
         id: authUser.id,
         name: authUser.user_metadata.name || 'Usuário',
         email: authUser.email || '',
-        role: 'admin'
+        role: 'admin',
+        is_master: profile?.is_master || false
       });
     } else {
       setUser(null);
@@ -337,11 +345,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (error) throw error;
 
     if (data.user) {
+      const { data: profile } = await supabase.from('profiles').select('is_master').eq('id', data.user.id).maybeSingle();
       setUser({
         id: data.user.id,
         name: data.user.user_metadata.name || 'Usuário',
         email: data.user.email || '',
-        role: 'admin'
+        role: 'admin',
+        is_master: profile?.is_master || false
       });
     }
   };
