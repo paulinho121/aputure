@@ -49,57 +49,101 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        // Fetch profile
-        supabase.from('profiles').select('is_master').eq('id', session.user.id).maybeSingle().then(({ data: profile }) => {
+    const initializeAuth = async () => {
+      console.log('[DEBUG] initializeAuth starting...');
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('[DEBUG] initializeAuth Error:', error);
+        } else if (session?.user) {
+          console.log('[DEBUG] initializeAuth: Session found:', session.user.id);
           setUser({
             id: session.user.id,
             name: session.user.user_metadata.name || 'Usuário',
             email: session.user.email || '',
             role: 'admin',
-            is_master: profile?.is_master || false
+            is_master: false
           });
-        });
+          fetchProfileInfo(session.user.id);
+        }
+      } catch (err) {
+        console.error('[DEBUG] initializeAuth Fatal:', err);
       }
-    });
+    };
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[DEBUG] onAuthStateChange event:', event, session?.user?.id);
       if (session?.user) {
-        const { data: profile } = await supabase.from('profiles').select('is_master').eq('id', session.user.id).maybeSingle();
         setUser({
           id: session.user.id,
           name: session.user.user_metadata.name || 'Usuário',
           email: session.user.email || '',
           role: 'admin',
-          is_master: profile?.is_master || false
+          is_master: false
         });
+        fetchProfileInfo(session.user.id);
       } else {
         setUser(null);
       }
     });
 
-    fetchEverything();
-
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUser = async () => {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (authUser) {
-      const { data: profile } = await supabase.from('profiles').select('is_master').eq('id', authUser.id).maybeSingle();
-      setUser({
-        id: authUser.id,
-        name: authUser.user_metadata.name || 'Usuário',
-        email: authUser.email || '',
-        role: 'admin',
-        is_master: profile?.is_master || false
-      });
-    } else {
-      setUser(null);
+  const fetchProfileInfo = async (userId: string) => {
+    try {
+      console.log('[DEBUG] fetchProfileInfo checking master status for:', userId);
+      const { data, error } = await supabase.from('profiles').select('is_master').eq('id', userId).maybeSingle();
+      if (data) {
+        console.log('[DEBUG] fetchProfileInfo result:', data);
+        setUser(prev => prev ? { ...prev, is_master: data.is_master || false } : null);
+      }
+    } catch (err) {
+      console.error('[DEBUG] fetchProfileInfo fatal error:', err);
     }
+  };
+
+  // Fetch data only when user is available
+  useEffect(() => {
+    if (user) {
+      console.log('[DEBUG] User detected, fetching data...');
+      fetchEverything();
+    }
+  }, [user?.id]);
+
+  const fetchUser = async () => {
+    console.log('[DEBUG] fetchUser starting...');
+    try {
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('[DEBUG] fetchUser: Auth error:', authError);
+        return;
+      }
+
+      if (authUser) {
+        console.log('[DEBUG] fetchUser: Found user:', authUser.id);
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('is_master')
+          .eq('id', authUser.id)
+          .maybeSingle();
+
+        if (profileError) console.error('[DEBUG] fetchUser: Profile error:', profileError);
+
+        setUser({
+          id: authUser.id,
+          name: authUser.user_metadata.name || 'Usuário',
+          email: authUser.email || '',
+          role: 'admin',
+          is_master: profile?.is_master || false
+        });
+      }
+    } catch (err) {
+      console.error('[DEBUG] fetchUser: Fatal error:', err);
+    }
+    console.log('[DEBUG] fetchUser finished');
   };
 
   const fetchSettings = async () => {
@@ -337,22 +381,31 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+    console.log('[DEBUG] login: starting for', email);
+    try {
+      // Very simple login without race or nested awaits
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) throw error;
+      if (error) {
+        console.error('[DEBUG] login: Supabase auth error', error);
+        throw error;
+      }
 
-    if (data.user) {
-      const { data: profile } = await supabase.from('profiles').select('is_master').eq('id', data.user.id).maybeSingle();
-      setUser({
-        id: data.user.id,
-        name: data.user.user_metadata.name || 'Usuário',
-        email: data.user.email || '',
-        role: 'admin',
-        is_master: profile?.is_master || false
-      });
+      console.log('[DEBUG] login: auth successful, user ID:', data.user?.id);
+
+      if (data.user) {
+        setUser({
+          id: data.user.id,
+          name: data.user.user_metadata.name || 'Usuário',
+          email: data.user.email || '',
+          role: 'admin',
+          is_master: false
+        });
+        console.log('[DEBUG] login: flow finished');
+      }
+    } catch (err) {
+      console.error('[DEBUG] login: unexpected error', err);
+      throw err;
     }
   };
 
