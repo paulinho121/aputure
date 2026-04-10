@@ -330,7 +330,7 @@ const ServiceOrders = () => {
                     >
                       Detalhes
                     </button>
-                    {user?.email === 'jonathan@mcistore.com.br' && (
+                    {user?.is_master && (
                       <button
                         onClick={() => {
                           if (window.confirm('Tem certeza que deseja excluir esta ordem de serviço? Esta ação não pode ser desfeita.')) {

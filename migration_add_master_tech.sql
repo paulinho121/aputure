@@ -44,27 +44,26 @@ BEGIN
     END IF;
 END $$;
 
--- 6. Elevate the requested email to master level
--- We try to update if it exists, and we also ensure it's in the profiles table.
--- Note: If the user hasn't signed up yet, this won't find them by ID, 
--- but we can insert the email/id if we know it, or wait for the trigger.
--- For an existing user, we join with auth.users to find the ID.
-
+-- 6. Elevate requested emails to master level
 DO $$
 DECLARE
-    user_id UUID;
+    u_email TEXT;
+    u_id UUID;
+    emails_to_elevate TEXT[] := ARRAY['assistenciatecnica@mcistore.com.br', 'jonathan@mcistore.com.br'];
 BEGIN
-    -- Try to find the user ID by email in auth.users
-    SELECT id INTO user_id FROM auth.users WHERE email = 'assistenciatecnica@mcistore.com.br';
-    
-    IF user_id IS NOT NULL THEN
-        -- Ensure profile exists
-        INSERT INTO public.profiles (id, email, is_master)
-        VALUES (user_id, 'assistenciatecnica@mcistore.com.br', true)
-        ON CONFLICT (id) DO UPDATE SET is_master = true;
+    FOREACH u_email IN ARRAY emails_to_elevate
+    LOOP
+        SELECT id INTO u_id FROM auth.users WHERE email = u_email;
         
-        RAISE NOTICE 'User assistenciatecnica@mcistore.com.br elevated to master.';
-    ELSE
-        RAISE NOTICE 'User assistenciatecnica@mcistore.com.br not found in auth.users. Please ensure they have signed up.';
-    END IF;
+        IF u_id IS NOT NULL THEN
+            -- Ensure profile exists and is master
+            INSERT INTO public.profiles (id, email, is_master)
+            VALUES (u_id, u_email, true)
+            ON CONFLICT (id) DO UPDATE SET is_master = true;
+            
+            RAISE NOTICE 'User % elevated to master.', u_email;
+        ELSE
+            RAISE NOTICE 'User % not found in auth.users. Skipping.', u_email;
+        END IF;
+    END LOOP;
 END $$;
