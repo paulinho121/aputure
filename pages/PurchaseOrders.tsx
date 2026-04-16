@@ -187,7 +187,7 @@ const PurchaseOrders = () => {
                             <h2 className="text-xl font-bold">Nova Venda de Peças</h2>
                             <button onClick={() => setShowNewModal(false)} className="text-slate-500 hover:text-slate-800">✕</button>
                         </div>
-                        <div className="p-8 space-y-8">
+                        <div className="p-4 sm:p-8 space-y-6 sm:space-y-8">
                             <div>
                                 <h3 className="text-lg font-bold border-b pb-2 mb-4">1. Selecionar Cliente</h3>
                                 <ClientSearch clients={clients} onSelect={setSelectedClientId} selectedClientId={selectedClientId} />
@@ -218,38 +218,40 @@ const PurchaseOrders = () => {
                                     </div>
                                 </div>
 
-                                <table className="w-full text-sm">
-                                    <thead className="bg-slate-50">
-                                        <tr>
-                                            <th className="p-3 text-left">Item</th>
-                                            <th className="p-3 text-right">Qtd</th>
-                                            <th className="p-3 text-right">Unitário</th>
-                                            <th className="p-3 text-right">Subtotal</th>
-                                            <th className="p-3 w-10"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {orderItems.map((item, idx) => {
-                                            const part = parts.find(p => p.id === item.partId);
-                                            return (
-                                                <tr key={idx}>
-                                                    <td className="p-3 font-medium">{part?.name}</td>
-                                                    <td className="p-3 text-right">
-                                                        <input type="number" className="w-16 p-1 border rounded text-right" value={item.quantity} onChange={(e) => handleUpdateQty(idx, parseInt(e.target.value) || 1)} />
-                                                    </td>
-                                                    <td className="p-3 text-right">R$ {item.unitPrice.toFixed(2)}</td>
-                                                    <td className="p-3 text-right font-bold">R$ {(item.unitPrice * item.quantity).toFixed(2)}</td>
-                                                    <td className="p-3 text-center">
-                                                        <button onClick={() => handleRemoveItem(idx)} className="text-red-500 hover:text-red-700"><Trash2 size={16} /></button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                        {orderItems.length === 0 && (
-                                            <tr><td colSpan={5} className="p-8 text-center text-slate-400">Nenhum item adicionado</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                                <div className="overflow-x-auto border rounded-lg">
+                                    <table className="w-full text-sm min-w-[500px]">
+                                        <thead className="bg-slate-50">
+                                            <tr>
+                                                <th className="p-3 text-left">Item</th>
+                                                <th className="p-3 text-right">Qtd</th>
+                                                <th className="p-3 text-right">Unitário</th>
+                                                <th className="p-3 text-right">Subtotal</th>
+                                                <th className="p-3 w-10"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {orderItems.map((item, idx) => {
+                                                const part = parts.find(p => p.id === item.partId);
+                                                return (
+                                                    <tr key={idx}>
+                                                        <td className="p-3 font-medium">{part?.name}</td>
+                                                        <td className="p-3 text-right">
+                                                            <input type="number" className="w-16 p-1 border rounded text-right" value={item.quantity} onChange={(e) => handleUpdateQty(idx, parseInt(e.target.value) || 1)} />
+                                                        </td>
+                                                        <td className="p-3 text-right">R$ {item.unitPrice.toFixed(2)}</td>
+                                                        <td className="p-3 text-right font-bold">R$ {(item.unitPrice * item.quantity).toFixed(2)}</td>
+                                                        <td className="p-3 text-center">
+                                                            <button onClick={() => handleRemoveItem(idx)} className="text-red-500 hover:text-red-700"><Trash2 size={16} /></button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            {orderItems.length === 0 && (
+                                                <tr><td colSpan={5} className="p-8 text-center text-slate-400">Nenhum item adicionado</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
 
                             <div className="flex flex-col items-end gap-2 border-t pt-4">
@@ -297,8 +299,8 @@ const PurchaseOrders = () => {
                                 </div>
                             </div>
 
-                            <div className="border rounded-xl overflow-hidden">
-                                <table className="w-full text-sm">
+                            <div className="overflow-x-auto border rounded-xl">
+                                <table className="w-full text-sm min-w-[500px]">
                                     <thead className="bg-slate-50">
                                         <tr>
                                             <th className="p-3 text-left">Item</th>

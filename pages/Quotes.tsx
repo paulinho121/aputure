@@ -91,10 +91,12 @@ const Quotes = () => {
   const handleItemPriceChange = (index: number, newPrice: string) => {
     if (!selectedOrder) return;
     const newItems = [...localItems];
-    // Keep as string in local state to allow typing (e.g., "10." or empty)
-    // But ServiceOrderItem expects number. We'll handle conversion on blur.
-    // For now, let's update localItems with the number value but keep a way to handle the input
-    newItems[index] = { ...newItems[index], unitPrice: parseFloat(newPrice) || 0 };
+    // Create a new object to avoid mutating the original
+    // Use the raw string for the input if possible, but here we still store as number
+    // To fix trailing dot/zero issues, we'd need to store strings in localItems.
+    // However, simply using localItems for the map fixes the main "stuck" issue.
+    const numericPrice = parseFloat(newPrice.replace(',', '.'));
+    newItems[index] = { ...newItems[index], unitPrice: isNaN(numericPrice) ? 0 : numericPrice };
     setLocalItems(newItems);
   };
 
@@ -615,7 +617,7 @@ const Quotes = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {selectedOrder.items.map((item, idx) => {
+                    {localItems.map((item, idx) => {
                       const part = parts.find(p => p.id === item.partId);
                       return (
                         <tr key={idx}>
@@ -627,7 +629,7 @@ const Quotes = () => {
                           <td className="p-3 text-right">
                             <input
                               type="number"
-                              className="w-8 p-1 border rounded text-right text-sm"
+                              className="w-16 p-1 border rounded text-right text-sm"
                               value={item.quantity}
                               onChange={(e) => handleItemQtyChange(idx, parseInt(e.target.value) || 1)}
                             />
@@ -635,6 +637,7 @@ const Quotes = () => {
                           <td className="p-3 text-right">
                             <input
                               type="number"
+                              step="0.01"
                               className="w-24 p-1 border rounded text-right text-sm font-medium"
                               value={item.unitPrice}
                               onChange={(e) => handleItemPriceChange(idx, e.target.value)}

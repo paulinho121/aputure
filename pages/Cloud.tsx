@@ -161,10 +161,10 @@ const Cloud = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <div className="flex gap-4 text-sm text-slate-500 whitespace-nowrap px-2">
-                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500"></span> Imagens</div>
-                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500"></span> PDFs</div>
-                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-slate-400"></span> Outros</div>
+                <div className="flex flex-wrap gap-x-4 gap-y-2 text-[10px] sm:text-xs text-slate-500 px-2 justify-center md:justify-end">
+                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Imagens</div>
+                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> PDFs</div>
+                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span> Outros</div>
                 </div>
             </div>
 
