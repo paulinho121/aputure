@@ -15,6 +15,7 @@ const Quotes = () => {
   const [laborCostLocal, setLaborCostLocal] = useState('0');
   const [shippingCostLocal, setShippingCostLocal] = useState('0');
   const [discountLocal, setDiscountLocal] = useState('0');
+  const [localItems, setLocalItems] = useState<ServiceOrderItem[]>([]);
 
   useEffect(() => {
     const id = searchParams.get('orderId');
@@ -63,6 +64,9 @@ const Quotes = () => {
       ...selectedOrder,
       items: [...selectedOrder.items, newItem]
     };
+    // Update local state immediately for UI responsiveness
+    setLocalItems(updatedOrder.items);
+    // Update DB
     updateOrder(updatedOrder);
     setPartSearch('');
     setShowPartDropdown(false);
@@ -78,15 +82,33 @@ const Quotes = () => {
 
   const handleRemoveItem = (index: number) => {
     if (!selectedOrder) return;
-    const newItems = [...selectedOrder.items];
+    const newItems = [...localItems];
     newItems.splice(index, 1);
+    setLocalItems(newItems);
     updateOrder({ ...selectedOrder, items: newItems });
   };
 
-  const handleItemPriceChange = (index: number, newPrice: number) => {
+  const handleItemPriceChange = (index: number, newPrice: string) => {
     if (!selectedOrder) return;
-    const newItems = [...selectedOrder.items];
-    newItems[index] = { ...newItems[index], unitPrice: newPrice };
+    const newItems = [...localItems];
+    // Keep as string in local state to allow typing (e.g., "10." or empty)
+    // But ServiceOrderItem expects number. We'll handle conversion on blur.
+    // For now, let's update localItems with the number value but keep a way to handle the input
+    newItems[index] = { ...newItems[index], unitPrice: parseFloat(newPrice) || 0 };
+    setLocalItems(newItems);
+  };
+
+  const handleItemPriceBlur = (index: number) => {
+    if (!selectedOrder) return;
+    // Sync with DB on blur
+    updateOrder({ ...selectedOrder, items: localItems });
+  };
+
+  const handleItemQtyChange = (index: number, newQty: number) => {
+    if (!selectedOrder) return;
+    const newItems = [...localItems];
+    newItems[index] = { ...newItems[index], quantity: newQty };
+    setLocalItems(newItems);
     updateOrder({ ...selectedOrder, items: newItems });
   };
 
@@ -104,6 +126,7 @@ const Quotes = () => {
       setLaborCostLocal(String(selectedOrder.laborCost || 0));
       setShippingCostLocal(String(selectedOrder.shippingCost || 0));
       setDiscountLocal(String(selectedOrder.discount || 0));
+      setLocalItems(selectedOrder.items || []);
     }
   }, [selectedOrder?.id]); // Only reset when ID changes, preventing loops if we depended on full object
 
@@ -170,7 +193,7 @@ const Quotes = () => {
 
   const calculateTotal = () => {
     if (!selectedOrder) return 0;
-    const partsTotal = selectedOrder.items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
+    const partsTotal = localItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
     const discountAmount = partsTotal * ((selectedOrder.discount || 0) / 100);
     const partsWithDiscount = partsTotal - discountAmount;
     return partsWithDiscount + (selectedOrder.laborCost || 0) + (selectedOrder.shippingCost || 0);
@@ -178,7 +201,7 @@ const Quotes = () => {
 
   const calculateDiscountAmount = () => {
     if (!selectedOrder) return 0;
-    const partsTotal = selectedOrder.items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
+    const partsTotal = localItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
     return partsTotal * ((selectedOrder.discount || 0) / 100);
   };
 
@@ -601,13 +624,21 @@ const Quotes = () => {
                             <div className="font-medium text-slate-800">{part ? part.name : 'Item Customizado / Excluído'}</div>
                             {!part && <div className="text-xs text-slate-400">ID: {item.partId}</div>}
                           </td>
-                          <td className="p-3 text-right">{item.quantity}</td>
                           <td className="p-3 text-right">
                             <input
                               type="number"
-                              className="w-24 p-1 border rounded text-right text-sm"
+                              className="w-8 p-1 border rounded text-right text-sm"
+                              value={item.quantity}
+                              onChange={(e) => handleItemQtyChange(idx, parseInt(e.target.value) || 1)}
+                            />
+                          </td>
+                          <td className="p-3 text-right">
+                            <input
+                              type="number"
+                              className="w-24 p-1 border rounded text-right text-sm font-medium"
                               value={item.unitPrice}
-                              onChange={(e) => handleItemPriceChange(idx, parseFloat(e.target.value) || 0)}
+                              onChange={(e) => handleItemPriceChange(idx, e.target.value)}
+                              onBlur={() => handleItemPriceBlur(idx)}
                             />
                           </td>
                           <td className="p-3 text-right font-medium">R$ {(item.unitPrice * item.quantity).toFixed(2)}</td>
@@ -744,7 +775,7 @@ const Quotes = () => {
             <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-2 items-end">
               <div className="flex justify-between items-center gap-4 text-slate-500">
                 <span>Peças</span>
-                <span>R$ {selectedOrder.items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0).toFixed(2)}</span>
+                <span>R$ {localItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0).toFixed(2)}</span>
               </div>
               {selectedOrder.discount && selectedOrder.discount > 0 && (
                 <div className="flex justify-between items-center gap-4 text-red-500">

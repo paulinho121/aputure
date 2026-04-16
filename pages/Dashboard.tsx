@@ -20,7 +20,7 @@ const StatCard = ({ title, value, icon, color }: any) => (
   </div>
 );
 
-const DashboardOverview = ({ activeRepairs, pendingQuotes, lowStock, partsLength, data, COLORS, recentOrders, activeClients }: any) => {
+const DashboardOverview = ({ activeRepairs, pendingQuotes, lowStock, partsLength, data, COLORS, recentOrders, activeClients, purchaseOrdersCount }: any) => {
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
 
   return (
@@ -37,6 +37,12 @@ const DashboardOverview = ({ activeRepairs, pendingQuotes, lowStock, partsLength
           value={pendingQuotes}
           icon={<Clock size={24} />}
           color="bg-amber-500"
+        />
+        <StatCard
+          title="Vendas de Peças"
+          value={purchaseOrdersCount.toString()}
+          icon={<DollarSign className="text-white" size={24} />}
+          color="bg-purple-500"
         />
         <StatCard
           title="Clientes Ativos"
@@ -140,7 +146,7 @@ const DashboardOverview = ({ activeRepairs, pendingQuotes, lowStock, partsLength
 };
 
 const Dashboard = () => {
-  const { orders, parts, clients } = useApp();
+  const { orders, parts, clients, purchaseOrders } = useApp();
   const [activeTab, setActiveTab] = useState<'overview' | 'billing'>('overview');
 
   const activeRepairs = orders.filter(o =>
@@ -205,9 +211,10 @@ const Dashboard = () => {
           COLORS={COLORS}
           recentOrders={recentOrders}
           activeClients={clients.length}
+          purchaseOrdersCount={purchaseOrders.length}
         />
       ) : (
-        <Billing orders={orders} />
+        <Billing orders={orders} purchaseOrders={purchaseOrders} />
       )}
     </div>
   );

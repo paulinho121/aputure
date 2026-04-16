@@ -47,6 +47,19 @@ export interface Client {
   notes?: string;
 }
 
+export interface PurchaseOrder {
+  id: string;
+  clientId: string;
+  entryDate: string;
+  status: string;
+  items: ServiceOrderItem[];
+  totalAmount: number;
+  paymentMethod?: string;
+  paymentProofUrl?: string;
+  invoiceNumber?: string;
+  stockDeducted: boolean;
+}
+
 export interface ServiceOrderItem {
   partId: string;
   quantity: number;

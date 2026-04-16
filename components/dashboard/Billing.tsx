@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ServiceOrder, OrderStatus } from '../../types';
+import { ServiceOrder, OrderStatus, PurchaseOrder } from '../../types';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
     LineChart, Line, AreaChart, Area
@@ -8,6 +8,7 @@ import { DollarSign, TrendingUp, CreditCard, Calendar, Filter, X } from 'lucide-
 
 interface BillingProps {
     orders: ServiceOrder[];
+    purchaseOrders: PurchaseOrder[];
 }
 
 const StatCard = ({ title, value, subtext, icon, color }: any) => (
@@ -23,7 +24,7 @@ const StatCard = ({ title, value, subtext, icon, color }: any) => (
     </div>
 );
 
-const Billing: React.FC<BillingProps> = ({ orders }) => {
+const Billing: React.FC<BillingProps> = ({ orders, purchaseOrders }) => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 
@@ -43,6 +44,19 @@ const Billing: React.FC<BillingProps> = ({ orders }) => {
             return true;
         });
     }, [orders, startDate, endDate]);
+
+    const filteredPurchaseOrders = useMemo(() => {
+        return purchaseOrders.filter(order => {
+            if (!startDate && !endDate) return true;
+            const orderDate = new Date(order.entryDate);
+            const start = startDate ? new Date(startDate) : null;
+            const end = endDate ? new Date(endDate) : null;
+            if (end) end.setHours(23, 59, 59, 999);
+            if (start && orderDate < start) return false;
+            if (end && orderDate > end) return false;
+            return true;
+        });
+    }, [purchaseOrders, startDate, endDate]);
 
     const stats = useMemo(() => {
         // Filter pertinent orders from the time-filtered list
@@ -69,33 +83,31 @@ const Billing: React.FC<BillingProps> = ({ orders }) => {
             if (order.serviceType === 'Warranty') {
                 warrantyRevenue += orderTotal;
             } else {
-                // For Paid orders, breakdown the components
-                // We apply discount proportionally or just subtract from total? 
-                // Since this is a simple breakdown, let's just sum raw values for Parts/Labor/Shipping
-                // and potentially handle discount separately or treat 'totalRevenue' as the truth.
-                // For simplicity and matching the user's "values", we will sum the components directly.
-                // Note: If discount exists, it technically reduces one of these or the total. 
-                // For the breakdown display, showing gross values for Parts/Labor/Shipping is usually preferred,
-                // but for "Total Revenue" we must be accurate.
-
                 partsRevenue += partsCost;
                 laborRevenue += laborCost;
                 shippingRevenue += shippingCost;
             }
         });
 
+        // Add Purchase Orders Revenue
+        const completedPurchaseOrders = filteredPurchaseOrders.filter(o => o.status === 'Pago' || o.status === 'Entregue');
+        completedPurchaseOrders.forEach(order => {
+            partsRevenue += order.totalAmount;
+        });
+
         const totalRevenue = warrantyRevenue + partsRevenue + laborRevenue + shippingRevenue;
 
-        // Pending Revenue Calculation (Simplified for now, just total)
+        // Pending Revenue Calculation
         const pendingRevenue = inProgressOrders.reduce((acc, order) => {
             const partsCost = order.items?.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0) || 0;
             return acc + (order.laborCost || 0) + partsCost + (order.shippingCost || 0);
-        }, 0);
+        }, 0) + filteredPurchaseOrders.filter(o => o.status === 'Pendente').reduce((acc, order) => acc + order.totalAmount, 0);
 
-        const averageTicket = completedOrders.length > 0 ? totalRevenue / completedOrders.length : 0;
+        const totalCompletedCount = completedOrders.length + completedPurchaseOrders.length;
+        const averageTicket = totalCompletedCount > 0 ? totalRevenue / totalCompletedCount : 0;
 
         // Monthly data simulation (grouping by entryDate)
-        const monthlyData = filteredOrders.reduce((acc: any, order) => {
+        const monthlyData = [...filteredOrders, ...filteredPurchaseOrders.map(o => ({ ...o, isPurchaseOrder: true }))].reduce((acc: any, order: any) => {
             const date = new Date(order.entryDate);
             const mouthYear = `${date.toLocaleString('default', { month: 'short' })}/${date.getFullYear()}`;
 
@@ -103,13 +115,21 @@ const Billing: React.FC<BillingProps> = ({ orders }) => {
                 acc[mouthYear] = { name: mouthYear, revenue: 0, pending: 0 };
             }
 
-            const partsCost = order.items?.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0) || 0;
-            const total = (order.laborCost || 0) + partsCost + (order.shippingCost || 0) - (order.discount || 0);
+            if (order.isPurchaseOrder) {
+                if (order.status === 'Pago' || order.status === 'Entregue') {
+                    acc[mouthYear].revenue += order.totalAmount;
+                } else if (order.status === 'Pendente') {
+                    acc[mouthYear].pending += order.totalAmount;
+                }
+            } else {
+                const partsCost = order.items?.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0) || 0;
+                const total = (order.laborCost || 0) + partsCost + (order.shippingCost || 0) - (order.discount || 0);
 
-            if (order.status === OrderStatus.COMPLETED || order.status === OrderStatus.DELIVERED) {
-                acc[mouthYear].revenue += total;
-            } else if ([OrderStatus.DIAGNOSING, OrderStatus.WAITING_APPROVAL, OrderStatus.IN_REPAIR].includes(order.status)) {
-                acc[mouthYear].pending += total;
+                if (order.status === OrderStatus.COMPLETED || order.status === OrderStatus.DELIVERED) {
+                    acc[mouthYear].revenue += total;
+                } else if ([OrderStatus.DIAGNOSING, OrderStatus.WAITING_APPROVAL, OrderStatus.IN_REPAIR].includes(order.status)) {
+                    acc[mouthYear].pending += total;
+                }
             }
 
             return acc;

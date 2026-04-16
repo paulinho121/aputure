@@ -18,6 +18,8 @@ const ServiceOrders = () => {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [pendingStatus, setPendingStatus] = useState<OrderStatus | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editOrder, setEditOrder] = useState<ServiceOrder | null>(null);
 
   // New Order State
   const [newOrder, setNewOrder] = useState<Partial<ServiceOrder>>({
@@ -107,8 +109,47 @@ const ServiceOrders = () => {
         const updated = { ...selectedOrder, status };
         updateOrder(updated);
         setSelectedOrder(updated);
+        // If we are editing, keep the edit state in sync
+        if (isEditing && editOrder) {
+          setEditOrder({ ...editOrder, status });
+        }
       }
     }
+  };
+
+  const handleStartEdit = () => {
+    setEditOrder({ ...selectedOrder! });
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditOrder(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editOrder) return;
+    try {
+      await updateOrder(editOrder);
+      setSelectedOrder(editOrder);
+      setIsEditing(false);
+      setEditOrder(null);
+    } catch (err) {
+      console.error('Error saving order edits:', err);
+      alert('Erro ao salvar as alterações da OS.');
+    }
+  };
+
+  const handleEditAccessory = (acc: string) => {
+    if (!editOrder) return;
+    const current = editOrder.accessories || [];
+    let newAccessories;
+    if (current.includes(acc)) {
+      newAccessories = current.filter(a => a !== acc);
+    } else {
+      newAccessories = [...current, acc];
+    }
+    setEditOrder({ ...editOrder, accessories: newAccessories });
   };
 
   const handleInvoiceSubmit = () => {
@@ -491,7 +532,11 @@ const ServiceOrders = () => {
                   <h2 className="text-xl font-bold text-slate-800">Ordem de Serviço #{selectedOrder.id}</h2>
                   <p className="text-sm text-slate-500">{new Date(selectedOrder.entryDate).toLocaleString()}</p>
                 </div>
-                <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+                <button onClick={() => {
+                  setSelectedOrder(null);
+                  setIsEditing(false);
+                  setEditOrder(null);
+                }} className="text-slate-400 hover:text-slate-600">✕</button>
               </div>
 
               <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
@@ -517,70 +562,217 @@ const ServiceOrders = () => {
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Equipamento</h3>
-                    <p className="font-medium text-lg text-slate-800">{selectedOrder.model}</p>
-                    <p className="font-mono text-sm text-slate-500">{selectedOrder.serialNumber}</p>
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          className="w-full p-2 border rounded-lg text-sm"
+                          value={editOrder?.model}
+                          onChange={e => setEditOrder({ ...editOrder!, model: e.target.value })}
+                          placeholder="Modelo"
+                        />
+                        <input
+                          type="text"
+                          className="w-full p-2 border rounded-lg text-sm font-mono"
+                          value={editOrder?.serialNumber}
+                          onChange={e => setEditOrder({ ...editOrder!, serialNumber: e.target.value })}
+                          placeholder="Nº Série"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <p className="font-medium text-lg text-slate-800">{selectedOrder.model}</p>
+                        <p className="font-mono text-sm text-slate-500">{selectedOrder.serialNumber}</p>
+                      </>
+                    )}
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Cliente</h3>
-                    <p className="font-medium text-lg text-slate-800">
-                      {clients.find(c => c.id === selectedOrder.clientId)?.name || 'Cliente Removido'}
-                    </p>
+                    {isEditing ? (
+                      <div className="text-sm text-slate-600 bg-slate-100 p-2 rounded">
+                        {clients.find(c => c.id === editOrder?.clientId)?.name || 'Cliente Removido'}
+                        <p className="text-xs text-slate-400 mt-1">(Troca de cliente via edição não permitida)</p>
+                      </div>
+                    ) : (
+                      <p className="font-medium text-lg text-slate-800">
+                        {clients.find(c => c.id === selectedOrder.clientId)?.name || 'Cliente Removido'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Tipo de Serviço</h3>
+                    {isEditing ? (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditOrder({ ...editOrder!, serviceType: 'Paid' })}
+                          className={`flex-1 py-1 rounded border text-xs font-bold transition-colors ${editOrder?.serviceType === 'Paid' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'}`}
+                        >
+                          Orçamento
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditOrder({ ...editOrder!, serviceType: 'Warranty' })}
+                          className={`flex-1 py-1 rounded border text-xs font-bold transition-colors ${editOrder?.serviceType === 'Warranty' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-600 border-slate-200'}`}
+                        >
+                          Garantia
+                        </button>
+                      </div>
+                    ) : (
+                      <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${selectedOrder.serviceType === 'Warranty' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {selectedOrder.serviceType === 'Warranty' ? 'Garantia' : 'Orçamento'}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    {/* Placeholder for future info or empty */}
                   </div>
                 </div>
 
                 <div>
                   <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Defeito Reclamado</h3>
-                  <div className="bg-slate-50 p-3 rounded-lg text-slate-700 border border-slate-100">
-                    {selectedOrder.faultDescription}
-                  </div>
+                  {isEditing ? (
+                    <textarea
+                      rows={3}
+                      className="w-full p-2 border rounded-lg text-sm"
+                      value={editOrder?.faultDescription}
+                      onChange={e => setEditOrder({ ...editOrder!, faultDescription: e.target.value })}
+                    />
+                  ) : (
+                    <div className="bg-slate-50 p-3 rounded-lg text-slate-700 border border-slate-100">
+                      {selectedOrder.faultDescription}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Estado Físico / Condições</h3>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-lg text-sm"
+                      value={editOrder?.condition}
+                      onChange={e => setEditOrder({ ...editOrder!, condition: e.target.value })}
+                    />
+                  ) : (
+                    <div className="bg-slate-50 p-3 rounded-lg text-slate-700 border border-slate-100">
+                      {selectedOrder.condition || 'Não informado'}
+                    </div>
+                  )}
                 </div>
 
                 <div>
                   <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Acessórios Checkados</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedOrder.accessories.map(acc => (
-                      <span key={acc} className="px-2 py-1 bg-slate-100 text-slate-600 text-sm rounded-md border border-slate-200">
-                        {acc}
-                      </span>
-                    ))}
-                    {selectedOrder.accessories.length === 0 && <span className="text-slate-400 italic">Nenhum acessório registrado</span>}
-                  </div>
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {commonAccessories.map(acc => (
+                          <button
+                            key={acc}
+                            type="button"
+                            onClick={() => handleEditAccessory(acc)}
+                            className={`px-2 py-1 rounded-full text-xs border transition-colors ${(editOrder?.accessories || []).includes(acc)
+                              ? 'bg-emerald-600 text-white border-emerald-600'
+                              : 'bg-white text-slate-600 border-slate-200'
+                              }`}
+                          >
+                            {acc}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Outro acessório..."
+                          className="flex-1 p-2 border rounded-lg text-xs"
+                          id="edit-accessory-input"
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              const input = e.currentTarget;
+                              if (input.value) {
+                                handleEditAccessory(input.value);
+                                input.value = '';
+                                e.preventDefault();
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedOrder.accessories.map(acc => (
+                        <span key={acc} className="px-2 py-1 bg-slate-100 text-slate-600 text-sm rounded-md border border-slate-200">
+                          {acc}
+                        </span>
+                      ))}
+                      {selectedOrder.accessories.length === 0 && <span className="text-slate-400 italic">Nenhum acessório registrado</span>}
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="p-4 border-t bg-slate-50 flex flex-wrap justify-end gap-2">
-                <button
-                  onClick={() => {
-                    const url = `${window.location.origin}/#/tracking/${selectedOrder.id}?token=${selectedOrder.trackingToken}`;
-                    navigator.clipboard.writeText(url);
-                    alert('Link de rastreio copiado para o WhatsApp!');
-                  }}
-                  className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 font-bold text-sm flex items-center gap-2"
-                >
-                  <MessageCircle size={18} />
-                  Enviar Rastreio
-                </button>
-                <button
-                  onClick={() => window.print()}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2"
-                >
-                  <Printer size={18} />
-                  Imprimir Termo
-                </button>
-                <button
-                  onClick={() => {
-                    navigate(`/quotes?orderId=${selectedOrder.id}`);
-                  }}
-                  className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium"
-                >
-                  Gerar Orçamento
-                </button>
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 font-medium"
-                >
-                  Fechar
-                </button>
+                {isEditing ? (
+                  <>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 font-medium"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSaveEdit}
+                      className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium"
+                    >
+                      Salvar Alterações
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleStartEdit}
+                      className="px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 font-bold text-sm"
+                    >
+                      Editar Dados
+                    </button>
+                    <button
+                      onClick={() => {
+                        const url = `${window.location.origin}/#/tracking/${selectedOrder.id}?token=${selectedOrder.trackingToken}`;
+                        navigator.clipboard.writeText(url);
+                        alert('Link de rastreio copiado para o WhatsApp!');
+                      }}
+                      className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 font-bold text-sm flex items-center gap-2"
+                    >
+                      <MessageCircle size={18} />
+                      Enviar Rastreio
+                    </button>
+                    <button
+                      onClick={() => window.print()}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2"
+                    >
+                      <Printer size={18} />
+                      Imprimir Termo
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate(`/quotes?orderId=${selectedOrder.id}`);
+                      }}
+                      className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium"
+                    >
+                      Gerar Orçamento
+                    </button>
+                    <button
+                      onClick={() => setSelectedOrder(null)}
+                      className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 font-medium"
+                    >
+                      Fechar
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 

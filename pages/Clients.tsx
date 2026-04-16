@@ -15,10 +15,17 @@ const Clients = () => {
     zipCode: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '', notes: ''
   });
 
-  const filteredClients = clients.filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.document.includes(searchTerm)
-  );
+  const filteredClients = clients.filter(c => {
+    const searchLower = searchTerm.toLowerCase();
+    const searchNumbers = searchTerm.replace(/\D/g, '');
+    const clientNumbers = c.document.replace(/\D/g, '');
+
+    return (
+      c.name.toLowerCase().includes(searchLower) ||
+      (searchNumbers !== '' && clientNumbers.includes(searchNumbers)) ||
+      c.document.includes(searchTerm)
+    );
+  });
 
   const handleAddClient = (e: React.FormEvent) => {
     e.preventDefault();

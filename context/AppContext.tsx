@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Brand, Client, OrderStatus, Part, ServiceOrder, User, Settings, ServiceOrderItem } from '../types';
+import { Brand, Client, OrderStatus, Part, ServiceOrder, User, Settings, ServiceOrderItem, PurchaseOrder } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface AppContextType {
@@ -34,6 +34,10 @@ interface AppContextType {
   addOrder: (order: ServiceOrder) => Promise<void>;
   updateOrder: (order: ServiceOrder) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
+  purchaseOrders: PurchaseOrder[];
+  addPurchaseOrder: (order: PurchaseOrder) => Promise<void>;
+  updatePurchaseOrder: (order: PurchaseOrder) => Promise<void>;
+  deletePurchaseOrder: (orderId: string) => Promise<void>;
   settings: Settings | null;
   updateSettings: (settings: Partial<Settings>) => Promise<void>;
 }
@@ -46,6 +50,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
@@ -194,6 +199,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       fetchParts(),
       fetchClients(),
       fetchOrders(),
+      fetchPurchaseOrders(),
       fetchBrands(),
       fetchSettings()
     ]);
@@ -314,6 +320,55 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (err) {
       console.error('Unexpected error fetching clients:', err);
+    }
+  };
+
+  const fetchPurchaseOrders = async () => {
+    try {
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('purchase_orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (ordersError) {
+        console.error('Error fetching purchase orders:', ordersError);
+        return;
+      }
+
+      if (ordersData) {
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('purchase_order_items')
+          .select('*');
+
+        if (itemsError) {
+          console.error('Error fetching purchase order items:', itemsError);
+        }
+
+        const mappedOrders: PurchaseOrder[] = ordersData.map(o => {
+          const orderItems = itemsData?.filter(item => item.purchase_order_id === o.id) || [];
+
+          return {
+            id: o.id,
+            clientId: o.client_id,
+            entryDate: o.entry_date,
+            status: o.status,
+            items: orderItems.map(item => ({
+              partId: item.part_id,
+              quantity: item.quantity,
+              unitPrice: parseFloat(item.unit_price)
+            })),
+            totalAmount: parseFloat(o.total_amount) || 0,
+            paymentMethod: o.payment_method,
+            paymentProofUrl: o.payment_proof_url,
+            invoiceNumber: o.invoice_number,
+            stockDeducted: o.stock_deducted || false
+          };
+        });
+
+        setPurchaseOrders(mappedOrders);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching purchase orders:', err);
     }
   };
 
@@ -884,6 +939,119 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const addPurchaseOrder = async (order: PurchaseOrder) => {
+    try {
+      const { error: orderError } = await supabase
+        .from('purchase_orders')
+        .insert({
+          id: order.id,
+          client_id: order.clientId,
+          entry_date: order.entryDate,
+          status: order.status,
+          total_amount: order.totalAmount,
+          payment_method: order.paymentMethod,
+          payment_proof_url: order.paymentProofUrl,
+          invoice_number: order.invoiceNumber,
+          stock_deducted: order.stockDeducted || false
+        });
+
+      if (orderError) throw orderError;
+
+      if (order.items && order.items.length > 0) {
+        await ensurePartsExist(order.items);
+        const itemsToInsert = order.items.map(item => ({
+          purchase_order_id: order.id,
+          part_id: item.partId,
+          quantity: item.quantity,
+          unit_price: item.unitPrice
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('purchase_order_items')
+          .insert(itemsToInsert);
+
+        if (itemsError) throw itemsError;
+      }
+
+      await fetchPurchaseOrders();
+    } catch (err: any) {
+      console.error('Error adding purchase order:', err);
+      alert('Erro ao salvar ordem de compra: ' + err.message);
+    }
+  };
+
+  const updatePurchaseOrder = async (updatedOrder: PurchaseOrder) => {
+    try {
+      const oldOrder = purchaseOrders.find(o => o.id === updatedOrder.id);
+
+      // If status is "Pago" or "Entregue" and stock not deducted, deduct now
+      if ((updatedOrder.status === 'Pago' || updatedOrder.status === 'Entregue') && !oldOrder?.stockDeducted) {
+        for (const item of updatedOrder.items) {
+          const part = parts.find(p => p.id === item.partId);
+          if (part) {
+            const newQty = (part.quantity || 0) - item.quantity;
+            await supabase.from('parts').update({ quantity: newQty }).eq('id', part.id);
+          }
+        }
+        updatedOrder.stockDeducted = true;
+      }
+
+      const { error: orderError } = await supabase
+        .from('purchase_orders')
+        .update({
+          client_id: updatedOrder.clientId,
+          status: updatedOrder.status,
+          total_amount: updatedOrder.totalAmount,
+          payment_method: updatedOrder.paymentMethod,
+          payment_proof_url: updatedOrder.paymentProofUrl,
+          invoice_number: updatedOrder.invoiceNumber,
+          stock_deducted: updatedOrder.stockDeducted
+        })
+        .eq('id', updatedOrder.id);
+
+      if (orderError) throw orderError;
+
+      const { error: deleteError } = await supabase
+        .from('purchase_order_items')
+        .delete()
+        .eq('purchase_order_id', updatedOrder.id);
+
+      if (deleteError) throw deleteError;
+
+      if (updatedOrder.items && updatedOrder.items.length > 0) {
+        await ensurePartsExist(updatedOrder.items);
+        const itemsToInsert = updatedOrder.items.map(item => ({
+          purchase_order_id: updatedOrder.id,
+          part_id: item.partId,
+          quantity: item.quantity,
+          unit_price: item.unitPrice
+        }));
+
+        const { error: itemsError } = await supabase
+            .from('purchase_order_items')
+            .insert(itemsToInsert);
+        
+        if (itemsError) throw itemsError;
+      }
+
+      await fetchPurchaseOrders();
+    } catch (err: any) {
+      console.error('Error updating purchase order:', err);
+      alert('Erro ao atualizar ordem de compra: ' + err.message);
+    }
+  };
+
+  const deletePurchaseOrder = async (orderId: string) => {
+    try {
+      const { error } = await supabase.from('purchase_orders').delete().eq('id', orderId);
+      if (error) throw error;
+      setPurchaseOrders(purchaseOrders.filter(o => o.id !== orderId));
+    } catch (err: any) {
+      console.error('Error deleting purchase order:', err);
+      alert('Erro ao excluir ordem de compra: ' + err.message);
+    }
+  };
+
   const deleteOrder = async (orderId: string) => {
     try {
       // Delete order items first (though cascade might handle it)
@@ -925,6 +1093,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       brands, addBrand, refreshBrands: fetchBrands,
       clients, addClient, updateClient,
       orders, addOrder, updateOrder, deleteOrder,
+      purchaseOrders, addPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder,
       settings, updateSettings
     }}>
       {children}

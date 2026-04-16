@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Users, Wrench, ClipboardList, LogOut, FileText, BarChart3, Menu, X, Database } from 'lucide-react';
+import { LayoutDashboard, Package, Users, Wrench, ClipboardList, LogOut, FileText, BarChart3, Menu, X, Database, ShoppingCart, Cloud } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const Sidebar = () => {
@@ -13,7 +13,9 @@ const Sidebar = () => {
     { to: '/inventory', icon: <Package size={20} />, label: 'Estoque' },
     { to: '/clients', icon: <Users size={20} />, label: 'Clientes' },
     { to: '/orders', icon: <Wrench size={20} />, label: 'Ordens de Serviço' },
+    { to: '/purchase-orders', icon: <ShoppingCart size={20} />, label: 'Ordem de Compra' },
     { to: '/quotes', icon: <FileText size={20} />, label: 'Orçamentos' },
+    { to: '/cloud', icon: <Cloud size={20} />, label: 'Nuvem' },
     { to: '/reports', icon: <BarChart3 size={20} />, label: 'Relatórios' },
     { to: '/maintenance', icon: <Database size={20} />, label: 'Manutenção' },
   ];

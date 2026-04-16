@@ -43,9 +43,13 @@ const ClientSearch: React.FC<ClientSearchProps> = ({ clients, onSelect, selected
 
     const filteredClients = clients.filter(client => {
         const searchLower = searchTerm.toLowerCase();
+        const searchNumbers = searchTerm.replace(/\D/g, '');
+        const clientNumbers = client.document.replace(/\D/g, '');
+
         return (
             client.name.toLowerCase().includes(searchLower) ||
-            client.document.replace(/\D/g, '').includes(searchLower.replace(/\D/g, ''))
+            (searchNumbers !== '' && clientNumbers.includes(searchNumbers)) ||
+            client.document.toLowerCase().includes(searchLower)
         );
     });
 

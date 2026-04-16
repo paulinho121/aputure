@@ -11,6 +11,8 @@ import ServiceOrders from './pages/ServiceOrders';
 import Quotes from './pages/Quotes';
 import Reports from './pages/Reports';
 import Maintenance from './pages/Maintenance';
+import PurchaseOrders from './pages/PurchaseOrders';
+import Cloud from './pages/Cloud';
 import Tracking from './pages/Tracking';
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
@@ -84,9 +86,21 @@ const AppContent = () => {
         </ProtectedRoute>
       } />
 
+      <Route path="/purchase-orders" element={
+        <ProtectedRoute>
+          <PurchaseOrders />
+        </ProtectedRoute>
+      } />
+
       <Route path="/quotes" element={
         <ProtectedRoute>
           <Quotes />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/cloud" element={
+        <ProtectedRoute>
+          <Cloud />
         </ProtectedRoute>
       } />
 
