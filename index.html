@@ -14,13 +14,13 @@
         font-family: 'Inter', sans-serif;
         background-color: #f8fafc;
       }
-      /* Custom Scrollbar */
+      /* Custom Scrollbar - Main Content */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #f1f5f9; 
+        background: #f8fafc; 
       }
       ::-webkit-scrollbar-thumb {
         background: #cbd5e1; 
@@ -28,6 +28,21 @@
       }
       ::-webkit-scrollbar-thumb:hover {
         background: #94a3b8; 
+      }
+
+      /* Sidebar Scrollbar - Matching bg-slate-900 */
+      .sidebar-nav::-webkit-scrollbar {
+        width: 4px;
+      }
+      .sidebar-nav::-webkit-scrollbar-track {
+        background: #0f172a; 
+      }
+      .sidebar-nav::-webkit-scrollbar-thumb {
+        background: #0f172a; 
+        border-radius: 10px;
+      }
+      .sidebar-nav:hover::-webkit-scrollbar-thumb {
+        background: #1e293b; 
       }
     </style>
   <script type="importmap">

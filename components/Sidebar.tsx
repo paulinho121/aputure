@@ -52,7 +52,7 @@ const Sidebar = () => {
           </div>
         </div>
 
-        <nav className="flex-1 py-6 px-3 space-y-2 overflow-y-auto">
+        <nav className="flex-1 py-6 px-3 space-y-2 overflow-y-auto sidebar-nav">
           {navItems.map((item) => {
             const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
             return (
