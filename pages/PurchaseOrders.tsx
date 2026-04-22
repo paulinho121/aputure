@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Search, Plus, ShoppingCart, Trash2, MessageCircle, Printer, FileText, Send, Check } from 'lucide-react';
+import { Search, Plus, ShoppingCart, Trash2, MessageCircle, Printer, FileText, Send, Check, CreditCard, Banknote, QrCode, Wallet } from 'lucide-react';
 import { PurchaseOrder, ServiceOrderItem } from '../types';
 import ClientSearch from '../components/ClientSearch';
 import { supabase } from '../lib/supabase';
@@ -16,6 +16,8 @@ const PurchaseOrders = () => {
     const [orderItems, setOrderItems] = useState<ServiceOrderItem[]>([]);
     const [partSearch, setPartSearch] = useState('');
     const [showPartDropdown, setShowPartDropdown] = useState(false);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+    const [installments, setInstallments] = useState(1);
 
     const filteredParts = parts.filter(part => {
         const search = partSearch.toLowerCase();
@@ -77,6 +79,7 @@ const PurchaseOrders = () => {
             status: 'Pendente',
             items: orderItems,
             totalAmount: calculateNewTotal(),
+            paymentMethod: selectedPaymentMethod + (selectedPaymentMethod === 'Cartão de Crédito' ? ` (${installments}x)` : ''),
             stockDeducted: false
         };
 
@@ -89,6 +92,8 @@ const PurchaseOrders = () => {
         setSelectedClientId('');
         setOrderItems([]);
         setPartSearch('');
+        setSelectedPaymentMethod('');
+        setInstallments(1);
     };
 
     const handleStatusChange = async (order: PurchaseOrder, newStatus: string) => {
@@ -102,6 +107,137 @@ const PurchaseOrders = () => {
         o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         clients.find(c => c.id === o.clientId)?.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    // Printable Purchase Receipt Component
+    const PrintablePurchaseReceipt = ({ order }: { order: PurchaseOrder }) => {
+        const client = clients.find(c => c.id === order.clientId);
+        if (!order || !client) return null;
+
+        return (
+            <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-8 overflow-y-auto">
+                {/* Header */}
+                <div className="flex justify-between items-start border-b-2 border-slate-200 pb-6 mb-8">
+                    <div className="flex items-center gap-4">
+                        <img src="/mci-logo.png" alt="MCI" className="h-16 w-auto object-contain" />
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-800">ASSISTÊNCIA TÉCNICA</h1>
+                            <p className="text-sm text-slate-500">Aputure • Amaran • Cream Source • Astera</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <h2 className="text-xl font-bold text-slate-800">RECIBO DE VENDA</h2>
+                        <p className="text-slate-500 font-mono">#{order.id}</p>
+                        <p className="text-sm text-slate-500 mt-1">{new Date(order.entryDate).toLocaleDateString()}</p>
+                    </div>
+                </div>
+
+                {/* Client and Payment Info */}
+                <div className="grid grid-cols-2 gap-8 mb-8">
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Dados do Cliente</h3>
+                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 h-full">
+                            <p className="font-bold text-slate-800 text-lg">{client.name}</p>
+                            <p className="text-slate-600">{client.document}</p>
+                            <p className="text-slate-600">{client.email}</p>
+                            <p className="text-slate-600">{client.phone}</p>
+                            <p className="text-slate-500 text-sm mt-2">{client.address}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Pagamento</h3>
+                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 h-full">
+                            <div className="flex justify-between items-center mb-4">
+                                <span className="text-slate-500">Método:</span>
+                                <span className="font-bold text-slate-800">{order.paymentMethod || 'Não informado'}</span>
+                            </div>
+                            <div className="flex justify-between items-center mb-4">
+                                <span className="text-slate-500">Status:</span>
+                                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                                    order.status === 'Pago' ? 'bg-emerald-100 text-emerald-700' :
+                                    order.status === 'Cancelado' ? 'bg-rose-100 text-rose-700' :
+                                    'bg-amber-100 text-amber-700'
+                                }`}>
+                                    {order.status}
+                                </span>
+                            </div>
+                            <div className="mt-6 border-t pt-4">
+                                <p className="text-xs text-slate-400 uppercase font-bold mb-1">Total a Pagar</p>
+                                <p className="text-3xl font-black text-emerald-600">R$ {order.totalAmount.toFixed(2)}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Items Table */}
+                <div className="mb-8">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Itens da Venda</h3>
+                    <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full text-sm">
+                            <thead className="bg-slate-50 border-b">
+                                <tr>
+                                    <th className="p-3 text-left">Peça / Produto</th>
+                                    <th className="p-3 text-right">Qtd</th>
+                                    <th className="p-3 text-right">Unitário</th>
+                                    <th className="p-3 text-right">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {order.items.map((item, idx) => {
+                                    const part = parts.find(p => p.id === item.partId);
+                                    return (
+                                        <tr key={idx}>
+                                            <td className="p-3">
+                                                <div className="font-medium">{part?.name || 'Item não encontrado'}</div>
+                                                <div className="text-xs text-slate-400">{part?.code}</div>
+                                            </td>
+                                            <td className="p-3 text-right">{item.quantity}</td>
+                                            <td className="p-3 text-right">R$ {item.unitPrice.toFixed(2)}</td>
+                                            <td className="p-3 text-right font-bold">R$ {(item.unitPrice * item.quantity).toFixed(2)}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                            <tfoot className="bg-slate-50 font-bold">
+                                <tr>
+                                    <td colSpan={3} className="p-3 text-right">TOTAL</td>
+                                    <td className="p-3 text-right text-lg text-emerald-600">R$ {order.totalAmount.toFixed(2)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Status and Info */}
+                <div className="grid grid-cols-2 gap-8 mb-12">
+                    <div>
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Data de Emissão</h3>
+                        <p className="text-slate-700">{new Date(order.entryDate).toLocaleString()}</p>
+                    </div>
+                </div>
+
+                {/* Signature */}
+                <div className="grid grid-cols-2 gap-12 mt-20">
+                    <div className="flex flex-col items-center">
+                        <div className="w-full border-b border-slate-300 mb-2"></div>
+                        <p className="text-sm font-medium text-slate-600">Assinatura do Recebedor</p>
+                        <p className="text-xs text-slate-400">{client.name}</p>
+                    </div>
+                    <div className="flex flex-col items-center">
+                        <div className="w-full border-b border-slate-300 mb-2"></div>
+                        <p className="text-sm font-medium text-slate-600">Responsável pela Venda</p>
+                        <p className="text-xs text-slate-400">MCI Assistência Técnica</p>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="fixed bottom-8 left-0 w-full text-center">
+                    <p className="text-xs text-slate-400">MCI Assistência Técnica • www.mci.tv • {new Date().toLocaleDateString()}</p>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="space-y-6">
@@ -254,10 +390,63 @@ const PurchaseOrders = () => {
                                 </div>
                             </div>
 
+                            <div>
+                                <h3 className="text-lg font-bold border-b pb-2 mb-4">3. Forma de Pagamento</h3>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                                    {[
+                                        { id: 'PIX', icon: QrCode, color: 'text-teal-600', bg: 'bg-teal-50' },
+                                        { id: 'Cartão de Crédito', icon: CreditCard, color: 'text-blue-600', bg: 'bg-blue-50' },
+                                        { id: 'Cartão de Débito', icon: CreditCard, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                                        { id: 'Dinheiro', icon: Banknote, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                                        { id: 'Transferência', icon: Send, color: 'text-orange-600', bg: 'bg-orange-50' },
+                                        { id: 'Boleto', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-50' },
+                                    ].map((method) => (
+                                        <button
+                                            key={method.id}
+                                            type="button"
+                                            onClick={() => setSelectedPaymentMethod(method.id)}
+                                            className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                                                selectedPaymentMethod === method.id 
+                                                ? `border-emerald-500 ${method.bg} shadow-md scale-105` 
+                                                : 'border-slate-100 hover:border-slate-200 bg-white'
+                                            }`}
+                                        >
+                                            <method.icon className={`${method.color} mb-2`} size={24} />
+                                            <span className="text-[10px] font-bold uppercase text-center leading-tight">{method.id}</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {selectedPaymentMethod === 'Cartão de Crédito' && (
+                                    <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100 animate-in fade-in slide-in-from-top-2">
+                                        <label className="block text-sm font-bold text-blue-900 mb-2">Parcelamento</label>
+                                        <select 
+                                            value={installments} 
+                                            onChange={(e) => setInstallments(parseInt(e.target.value))}
+                                            className="w-full p-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500/20"
+                                        >
+                                            {[...Array(12)].map((_, i) => (
+                                                <option key={i+1} value={i+1}>{i+1}x {i === 0 ? '(À vista)' : `de R$ ${(calculateNewTotal() / (i+1)).toFixed(2)}`}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="flex flex-col items-end gap-2 border-t pt-4">
                                 <div className="text-slate-500">Valor Total</div>
                                 <div className="text-3xl font-bold">R$ {calculateNewTotal().toFixed(2)}</div>
-                                <button onClick={handleSubmitOrder} className="mt-4 bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold text-lg hover:bg-emerald-700 shadow-xl">Finalizar Venda</button>
+                                <button 
+                                    onClick={handleSubmitOrder} 
+                                    disabled={!selectedPaymentMethod || orderItems.length === 0}
+                                    className={`mt-4 px-8 py-3 rounded-lg font-bold text-lg shadow-xl transition-all ${
+                                        !selectedPaymentMethod || orderItems.length === 0
+                                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                        : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                    }`}
+                                >
+                                    Finalizar Venda
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -288,14 +477,44 @@ const PurchaseOrders = () => {
                                 ))}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase mb-1">Cliente</h4>
-                                    <p className="font-bold text-slate-800">{clients.find(c => c.id === selectedOrder.clientId)?.name}</p>
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Dados do Cliente</h4>
+                                    {(() => {
+                                        const client = clients.find(c => c.id === selectedOrder.clientId);
+                                        return client ? (
+                                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
+                                                <p className="font-bold text-slate-800">{client.name}</p>
+                                                <p className="text-slate-600">{client.document}</p>
+                                                <p className="text-slate-600">{client.email}</p>
+                                                <p className="text-slate-600">{client.phone}</p>
+                                                <p className="text-slate-500 mt-2 text-xs">{client.address}</p>
+                                            </div>
+                                        ) : (
+                                            <p className="text-red-500">Cliente não encontrado</p>
+                                        );
+                                    })()}
                                 </div>
-                                <div className="text-right">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase mb-1">Valor Total</h4>
-                                    <p className="font-bold text-emerald-600 text-xl">R$ {selectedOrder.totalAmount.toFixed(2)}</p>
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Pagamento e Total</h4>
+                                    <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 space-y-3">
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-emerald-600 font-medium">Forma de Pagamento:</span>
+                                            <span className="text-emerald-900 font-bold">{selectedOrder.paymentMethod || 'Não informado'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-emerald-600 font-medium">Status:</span>
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                                                selectedOrder.status === 'Pago' ? 'bg-emerald-200 text-emerald-800' : 'bg-amber-200 text-amber-800'
+                                            }`}>
+                                                {selectedOrder.status}
+                                            </span>
+                                        </div>
+                                        <div className="pt-2 border-t border-emerald-200">
+                                            <p className="text-[10px] text-emerald-600 font-bold uppercase mb-1">Valor Total</p>
+                                            <p className="font-black text-emerald-700 text-3xl">R$ {selectedOrder.totalAmount.toFixed(2)}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -333,6 +552,9 @@ const PurchaseOrders = () => {
                              <button onClick={() => setSelectedOrder(null)} className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg">Fechar</button>
                         </div>
                     </div>
+
+                    {/* Printable Receipt */}
+                    <PrintablePurchaseReceipt order={selectedOrder} />
                 </div>
             )}
         </div>
@@ -340,3 +562,4 @@ const PurchaseOrders = () => {
 };
 
 export default PurchaseOrders;
+

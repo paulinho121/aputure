@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Search, Plus, ClipboardList, Camera, CheckSquare, Printer, Trash2, MessageCircle } from 'lucide-react';
+import { Search, Plus, ClipboardList, Camera, CheckSquare, Printer, Trash2, MessageCircle, CreditCard, Banknote, QrCode, Wallet, FileText, Send } from 'lucide-react';
 import { OrderStatus, ServiceOrder } from '../types';
 import ClientSearch from '../components/ClientSearch';
 import { supabase } from '../lib/supabase';
@@ -20,6 +20,8 @@ const ServiceOrders = () => {
   const [pendingStatus, setPendingStatus] = useState<OrderStatus | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editOrder, setEditOrder] = useState<ServiceOrder | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+  const [installments, setInstallments] = useState(1);
 
   // New Order State
   const [newOrder, setNewOrder] = useState<Partial<ServiceOrder>>({
@@ -157,17 +159,26 @@ const ServiceOrders = () => {
       alert('Por favor, digite o número da nota fiscal.');
       return;
     }
+    if (!selectedPaymentMethod) {
+      alert('Por favor, selecione a forma de pagamento.');
+      return;
+    }
+
     if (selectedOrder && pendingStatus) {
+      const finalPaymentMethod = selectedPaymentMethod === 'Cartão de Crédito' ? `${selectedPaymentMethod} (${installments}x)` : selectedPaymentMethod;
       const updated = {
         ...selectedOrder,
         status: pendingStatus,
-        invoiceNumber: invoiceNumber.trim()
+        invoiceNumber: invoiceNumber.trim(),
+        paymentMethod: finalPaymentMethod
       };
       updateOrder(updated);
       setSelectedOrder(updated);
       setShowInvoiceModal(false);
       setInvoiceNumber('');
       setPendingStatus(null);
+      setSelectedPaymentMethod('');
+      setInstallments(1);
     }
   };
 
@@ -794,10 +805,10 @@ const ServiceOrders = () => {
               <button onClick={handleInvoiceCancel} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">
-                  Digite o número da nota fiscal
+                  Número da Nota Fiscal
                 </label>
                 <input
                   type="text"
@@ -807,14 +818,55 @@ const ServiceOrders = () => {
                   onChange={(e) => setInvoiceNumber(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      handleInvoiceSubmit();
+                      // Don't submit here if we need to pick payment
                     }
                   }}
                   autoFocus
                 />
-                <p className="text-xs text-slate-500 mt-1">
-                  Este campo é obrigatório para marcar a ordem como entregue.
-                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-3">Forma de Pagamento</label>
+                <div className="grid grid-cols-2 gap-2">
+                    {[
+                        { id: 'Pix', icon: QrCode, color: 'text-teal-600', bg: 'bg-teal-50' },
+                        { id: 'Cartão de Crédito', icon: CreditCard, color: 'text-blue-600', bg: 'bg-blue-50' },
+                        { id: 'Cartão de Débito', icon: CreditCard, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                        { id: 'Dinheiro', icon: Banknote, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                        { id: 'Transferência', icon: Send, color: 'text-orange-600', bg: 'bg-orange-50' },
+                        { id: 'Boleto', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-50' },
+                    ].map((method) => (
+                        <button
+                            key={method.id}
+                            type="button"
+                            onClick={() => setSelectedPaymentMethod(method.id)}
+                            className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                                selectedPaymentMethod === method.id 
+                                ? `border-emerald-500 ${method.bg} shadow-sm` 
+                                : 'border-slate-100 hover:border-slate-200 bg-white'
+                            }`}
+                        >
+                            <method.icon className={method.color} size={20} />
+                            <span className="text-xs font-bold uppercase">{method.id}</span>
+                        </button>
+                    ))}
+                </div>
+
+                {selectedPaymentMethod === 'Cartão de Crédito' && (
+                    <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100 animate-in fade-in slide-in-from-top-2">
+                        <label className="block text-sm font-bold text-blue-900 mb-2">Parcelamento</label>
+                        <select 
+                            value={installments} 
+                            onChange={(e) => setInstallments(parseInt(e.target.value))}
+                            className="w-full p-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500/20"
+                        >
+                            {[...Array(12)].map((_, i) => {
+                                const total = selectedOrder?.laborCost || 0; // Simplified total calculation here or use props
+                                return <option key={i+1} value={i+1}>{i+1}x {i === 0 ? '(À vista)' : ''}</option>
+                            })}
+                        </select>
+                    </div>
+                )}
               </div>
             </div>
 

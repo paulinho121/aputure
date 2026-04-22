@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { OrderStatus, ServiceOrderItem } from '../types';
-import { FileText, Plus, Trash2, Printer, Send } from 'lucide-react';
+import { FileText, Plus, Trash2, Printer, Send, CreditCard, Banknote, QrCode, Wallet, Check } from 'lucide-react';
 
 const Quotes = () => {
   const { orders, parts, updateOrder, clients, user } = useApp();
@@ -16,6 +16,7 @@ const Quotes = () => {
   const [shippingCostLocal, setShippingCostLocal] = useState('0');
   const [discountLocal, setDiscountLocal] = useState('0');
   const [localItems, setLocalItems] = useState<ServiceOrderItem[]>([]);
+  const [installments, setInstallments] = useState(1);
 
   useEffect(() => {
     const id = searchParams.get('orderId');
@@ -181,9 +182,17 @@ const Quotes = () => {
 
   const handlePaymentMethodChange = (method: string) => {
     if (selectedOrder) {
-      updateOrder({ ...selectedOrder, paymentMethod: method });
+      const finalMethod = method === 'Cartão de Crédito' ? `${method} (${installments}x)` : method;
+      updateOrder({ ...selectedOrder, paymentMethod: finalMethod });
     }
   };
+
+  useEffect(() => {
+    if (selectedOrder?.paymentMethod?.includes('Cartão de Crédito')) {
+        const match = selectedOrder.paymentMethod.match(/\((\d+)x\)/);
+        if (match) setInstallments(parseInt(match[1]));
+    }
+  }, [selectedOrder?.id]);
 
   const handlePaymentProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (selectedOrder && e.target.files && e.target.files[0]) {
@@ -724,50 +733,88 @@ const Quotes = () => {
                 </div>
 
                 <div className="w-full mt-4 border-t border-slate-100 pt-4">
-                  <h4 className="text-sm font-bold text-slate-800 mb-4">Dados de Pagamento</h4>
-                  <div className="flex gap-6 items-start">
-                    <div className="w-64">
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Forma de Pagamento</label>
-                      <select
-                        className="w-full p-2 border rounded-lg text-sm"
-                        value={selectedOrder.paymentMethod || ''}
-                        onChange={(e) => handlePaymentMethodChange(e.target.value)}
-                      >
-                        <option value="">Selecione...</option>
-                        <option value="Pix">Pix</option>
-                        <option value="Cartão de Crédito">Cartão de Crédito</option>
-                        <option value="Cartão de Débito">Cartão de Débito</option>
-                        <option value="Boleto">Boleto</option>
-                        <option value="Dinheiro">Dinheiro</option>
-                        <option value="Transferência">Transferência</option>
-                      </select>
-                    </div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Formas de Pagamento</h4>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+                      {[
+                          { id: 'Pix', icon: QrCode, color: 'text-teal-600', bg: 'bg-teal-50' },
+                          { id: 'Cartão de Crédito', icon: CreditCard, color: 'text-blue-600', bg: 'bg-blue-50' },
+                          { id: 'Cartão de Débito', icon: CreditCard, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                          { id: 'Dinheiro', icon: Banknote, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                          { id: 'Transferência', icon: Send, color: 'text-orange-600', bg: 'bg-orange-50' },
+                          { id: 'Boleto', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-50' },
+                      ].map((method) => {
+                          const isSelected = selectedOrder.paymentMethod?.startsWith(method.id);
+                          return (
+                            <button
+                                key={method.id}
+                                type="button"
+                                onClick={() => {
+                                    const finalMethod = method.id === 'Cartão de Crédito' ? `${method.id} (${installments}x)` : method.id;
+                                    updateOrder({ ...selectedOrder, paymentMethod: finalMethod });
+                                }}
+                                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                                    isSelected 
+                                    ? `border-emerald-500 ${method.bg} shadow-md scale-105` 
+                                    : 'border-slate-100 hover:border-slate-200 bg-white'
+                                }`}
+                            >
+                                <method.icon className={`${method.color} mb-2`} size={24} />
+                                <span className="text-[10px] font-bold uppercase text-center leading-tight">{method.id}</span>
+                            </button>
+                          );
+                      })}
+                  </div>
 
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Comprovante de Pagamento</label>
-                      <div className="flex items-center gap-4">
+                  {selectedOrder.paymentMethod?.startsWith('Cartão de Crédito') && (
+                      <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100 animate-in fade-in slide-in-from-top-2 max-w-sm">
+                          <label className="block text-sm font-bold text-blue-900 mb-2">Parcelamento</label>
+                          <select 
+                              value={installments} 
+                              onChange={(e) => {
+                                  const val = parseInt(e.target.value);
+                                  setInstallments(val);
+                                  updateOrder({ ...selectedOrder, paymentMethod: `Cartão de Crédito (${val}x)` });
+                              }}
+                              className="w-full p-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500/20"
+                          >
+                              {[...Array(12)].map((_, i) => (
+                                  <option key={i+1} value={i+1}>{i+1}x {i === 0 ? '(À vista)' : `de R$ ${(calculateTotal() / (i+1)).toFixed(2)}`}</option>
+                              ))}
+                          </select>
+                      </div>
+                  )}
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <label className="block text-sm font-bold text-slate-700 mb-3">Comprovante de Pagamento</label>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <div className="relative overflow-hidden inline-block w-full sm:w-auto">
+                        <button className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-700 transition-colors w-full sm:w-auto">
+                          Escolher Arquivo
+                        </button>
                         <input
                           type="file"
                           accept="image/*,.pdf"
                           onChange={handlePaymentProofUpload}
-                          className="text-sm text-slate-500
-                            file:mr-4 file:py-2 file:px-4
-                            file:rounded-full file:border-0
-                            file:text-sm file:font-semibold
-                            file:bg-emerald-50 file:text-emerald-700
-                            hover:file:bg-emerald-100"
+                          className="absolute inset-0 opacity-0 cursor-pointer"
                         />
-                        {selectedOrder.paymentProofUrl && (
+                      </div>
+                      
+                      {selectedOrder.paymentProofUrl ? (
+                        <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-lg border border-emerald-200">
+                          <Check className="text-emerald-500" size={16} />
                           <a
                             href={selectedOrder.paymentProofUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                            className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1"
                           >
                             <FileText size={16} /> Ver Comprovante
                           </a>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-400">Nenhum arquivo enviado</p>
+                      )}
                     </div>
                   </div>
                 </div>
