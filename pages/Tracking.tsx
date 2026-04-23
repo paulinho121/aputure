@@ -50,8 +50,24 @@ const Tracking = () => {
                 if (!data) {
                     setError('Ordem de Serviço não encontrada ou token inválido.');
                 } else {
+                    let itemsWithDetails: any[] = [];
+                    const { data: itemsData } = await supabase
+                        .from('service_order_items')
+                        .select('*, parts(name, code)')
+                        .eq('service_order_id', data.id);
+                    
+                    if (itemsData) {
+                        itemsWithDetails = itemsData.map((item: any) => ({
+                            partId: item.part_id,
+                            quantity: item.quantity,
+                            unitPrice: parseFloat(item.unit_price),
+                            partName: item.parts?.name || 'Item Diverso',
+                            partCode: item.parts?.code || '-'
+                        }));
+                    }
+
                     // Map database row to ServiceOrder type
-                    const mappedOrder: ServiceOrder = {
+                    const mappedOrder: ServiceOrder & { itemsWithDetails?: any[] } = {
                         id: data.id,
                         clientId: data.client_id,
                         model: data.model,
@@ -63,12 +79,16 @@ const Tracking = () => {
                         status: data.status as OrderStatus,
                         serviceType: data.service_type,
                         items: data.items || [],
-                        laborCost: data.labor_cost || 0,
+                        itemsWithDetails: itemsWithDetails,
+                        laborCost: parseFloat(data.labor_cost) || 0,
+                        shippingCost: parseFloat(data.shipping_cost) || 0,
+                        shippingMethod: data.shipping_method,
+                        discount: parseFloat(data.discount) || 0,
                         photos: data.photos || [],
                         technicalReport: data.technical_report,
                         trackingToken: data.tracking_token
                     };
-                    setOrder(mappedOrder);
+                    setOrder(mappedOrder as any);
                 }
             } catch (err: any) {
                 console.error('Error fetching tracking data:', err);
@@ -80,6 +100,40 @@ const Tracking = () => {
 
         fetchOrder();
     }, [osId, token]);
+
+    const handleApproval = async (approved: boolean) => {
+        if (!order) return;
+        
+        const confirmMsg = approved 
+            ? "Tem certeza que deseja APROVAR este orçamento? O reparo será iniciado."
+            : "Tem certeza que deseja RECUSAR este orçamento?";
+            
+        if (!window.confirm(confirmMsg)) return;
+
+        const newStatus = approved ? OrderStatus.IN_REPAIR : OrderStatus.RETURN;
+        
+        try {
+            setLoading(true);
+            const { data, error } = await supabase.rpc('update_order_status_public', {
+                p_order_id: order.id,
+                p_token: token,
+                p_new_status: newStatus
+            });
+            
+            if (error) {
+                console.error(error);
+                throw new Error('Falha ao atualizar o status');
+            }
+            
+            setOrder({...order, status: newStatus});
+            alert(approved ? 'Orçamento aprovado com sucesso!' : 'Orçamento recusado.');
+        } catch(err) {
+            console.error(err);
+            alert('Erro ao processar sua resposta. Tente novamente ou contate o suporte.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -148,6 +202,70 @@ const Tracking = () => {
                         <p className="text-slate-700 font-medium">{new Date(order.entryDate).toLocaleDateString()} às {new Date(order.entryDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
                 </div>
+                {/* Quote Approval Block */}
+                {order.status === OrderStatus.WAITING_APPROVAL && (
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border-2 border-emerald-500 relative overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+                        <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">Ação Necessária</div>
+                        <h3 className="text-lg font-bold text-slate-800 mb-4 mt-2 flex items-center gap-2">
+                            Aprovação de Orçamento
+                        </h3>
+                        
+                        <div className="space-y-3 mb-6">
+                            {(order as any).itemsWithDetails?.map((item: any, idx: number) => (
+                                <div key={idx} className="flex justify-between items-center text-sm border-b border-slate-50 pb-2">
+                                    <div>
+                                        <p className="font-medium text-slate-700">{item.partName}</p>
+                                        <p className="text-xs text-slate-400">{item.quantity}x R$ {item.unitPrice.toFixed(2)}</p>
+                                    </div>
+                                    <p className="font-medium text-slate-800">R$ {(item.quantity * item.unitPrice).toFixed(2)}</p>
+                                </div>
+                            ))}
+
+                            {order.laborCost > 0 && (
+                                <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2 pt-2">
+                                    <p className="font-medium text-slate-700">Mão de Obra</p>
+                                    <p className="font-medium text-slate-800">R$ {order.laborCost.toFixed(2)}</p>
+                                </div>
+                            )}
+
+                            {(order.shippingCost || 0) > 0 && (
+                                <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2 pt-2">
+                                    <p className="font-medium text-slate-700">Frete ({order.shippingMethod || 'Envio'})</p>
+                                    <p className="font-medium text-slate-800">R$ {(order.shippingCost || 0).toFixed(2)}</p>
+                                </div>
+                            )}
+
+                            {(order.discount || 0) > 0 && (
+                                <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2 pt-2 text-red-500">
+                                    <p className="font-medium">Desconto</p>
+                                    <p className="font-medium">- R$ {(((order as any).itemsWithDetails?.reduce((acc: number, i: any) => acc + (i.quantity * i.unitPrice), 0) || 0) * (order.discount! / 100)).toFixed(2)}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="bg-slate-50 p-4 rounded-xl flex justify-between items-center mb-6">
+                            <p className="text-slate-600 font-medium">Total</p>
+                            <p className="text-xl font-bold text-emerald-600">
+                                R$ {(((order as any).itemsWithDetails?.reduce((acc: number, i: any) => acc + (i.quantity * i.unitPrice), 0) || 0) * (1 - (order.discount || 0) / 100) + order.laborCost + (order.shippingCost || 0)).toFixed(2)}
+                            </p>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => handleApproval(false)}
+                                className="flex-1 py-3 px-4 border border-red-200 text-red-600 rounded-xl font-bold hover:bg-red-50 transition-colors"
+                            >
+                                Recusar
+                            </button>
+                            <button 
+                                onClick={() => handleApproval(true)}
+                                className="flex-1 py-3 px-4 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 transition-colors"
+                            >
+                                Aprovar Orçamento
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Timeline */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
