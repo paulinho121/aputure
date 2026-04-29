@@ -361,7 +361,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             paymentMethod: o.payment_method,
             paymentProofUrl: o.payment_proof_url,
             invoiceNumber: o.invoice_number,
-            stockDeducted: o.stock_deducted || false
+            stockDeducted: o.stock_deducted || false,
+            discountPercentage: parseFloat(o.discount_percentage) || 0,
+            shippingCost: parseFloat(o.shipping_cost) || 0,
+            shippingType: o.shipping_type
           };
         });
 
@@ -952,7 +955,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           payment_method: order.paymentMethod,
           payment_proof_url: order.paymentProofUrl,
           invoice_number: order.invoiceNumber,
-          stock_deducted: order.stockDeducted || false
+          stock_deducted: order.stockDeducted || false,
+          discount_percentage: order.discountPercentage,
+          shipping_cost: order.shippingCost,
+          shipping_type: order.shippingType
         });
 
       if (orderError) throw orderError;
@@ -1005,7 +1011,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           payment_method: updatedOrder.paymentMethod,
           payment_proof_url: updatedOrder.paymentProofUrl,
           invoice_number: updatedOrder.invoiceNumber,
-          stock_deducted: updatedOrder.stockDeducted
+          stock_deducted: updatedOrder.stockDeducted,
+          discount_percentage: updatedOrder.discountPercentage,
+          shipping_cost: updatedOrder.shippingCost,
+          shipping_type: updatedOrder.shippingType
         })
         .eq('id', updatedOrder.id);
 

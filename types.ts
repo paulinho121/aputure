@@ -58,6 +58,9 @@ export interface PurchaseOrder {
   paymentProofUrl?: string;
   invoiceNumber?: string;
   stockDeducted: boolean;
+  discountPercentage?: number;
+  shippingCost?: number;
+  shippingType?: string;
 }
 
 export interface ServiceOrderItem {

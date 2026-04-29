@@ -18,6 +18,9 @@ const PurchaseOrders = () => {
     const [showPartDropdown, setShowPartDropdown] = useState(false);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
     const [installments, setInstallments] = useState(1);
+    const [discountPercentage, setDiscountPercentage] = useState(0);
+    const [shippingCost, setShippingCost] = useState(0);
+    const [shippingType, setShippingType] = useState('');
 
     const filteredParts = parts.filter(part => {
         const search = partSearch.toLowerCase();
@@ -48,8 +51,14 @@ const PurchaseOrders = () => {
         setOrderItems(orderItems.map((item, i) => i === idx ? { ...item, quantity: qty } : item));
     };
 
-    const calculateNewTotal = () => {
+    const calculateSubtotal = () => {
         return orderItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
+    };
+
+    const calculateNewTotal = () => {
+        const subtotal = calculateSubtotal();
+        const discountAmount = subtotal * (discountPercentage / 100);
+        return subtotal - discountAmount + shippingCost;
     };
 
     const handleSubmitOrder = async (e: React.FormEvent) => {
@@ -80,7 +89,10 @@ const PurchaseOrders = () => {
             items: orderItems,
             totalAmount: calculateNewTotal(),
             paymentMethod: selectedPaymentMethod + (selectedPaymentMethod === 'Cartão de Crédito' ? ` (${installments}x)` : ''),
-            stockDeducted: false
+            stockDeducted: false,
+            discountPercentage,
+            shippingCost,
+            shippingType
         };
 
         await addPurchaseOrder(newOrder);
@@ -94,6 +106,9 @@ const PurchaseOrders = () => {
         setPartSearch('');
         setSelectedPaymentMethod('');
         setInstallments(1);
+        setDiscountPercentage(0);
+        setShippingCost(0);
+        setShippingType('');
     };
 
     const handleStatusChange = async (order: PurchaseOrder, newStatus: string) => {
@@ -199,8 +214,24 @@ const PurchaseOrders = () => {
                             </tbody>
                             <tfoot className="bg-slate-50 font-bold">
                                 <tr>
-                                    <td colSpan={3} className="p-3 text-right">TOTAL</td>
-                                    <td className="p-3 text-right text-lg text-emerald-600">R$ {order.totalAmount.toFixed(2)}</td>
+                                    <td colSpan={3} className="p-3 text-right">Subtotal</td>
+                                    <td className="p-3 text-right">R$ {order.items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0).toFixed(2)}</td>
+                                </tr>
+                                {order.discountPercentage && order.discountPercentage > 0 ? (
+                                    <tr className="text-rose-600">
+                                        <td colSpan={3} className="p-3 text-right">Desconto ({order.discountPercentage}%)</td>
+                                        <td className="p-3 text-right">- R$ {(order.items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0) * (order.discountPercentage / 100)).toFixed(2)}</td>
+                                    </tr>
+                                ) : null}
+                                {order.shippingCost && order.shippingCost > 0 ? (
+                                    <tr>
+                                        <td colSpan={3} className="p-3 text-right">Frete {order.shippingType ? `(${order.shippingType})` : ''}</td>
+                                        <td className="p-3 text-right">+ R$ {order.shippingCost.toFixed(2)}</td>
+                                    </tr>
+                                ) : null}
+                                <tr className="border-t-2 border-slate-200">
+                                    <td colSpan={3} className="p-3 text-right uppercase tracking-wider">TOTAL</td>
+                                    <td className="p-3 text-right text-lg text-emerald-600 font-black">R$ {order.totalAmount.toFixed(2)}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -433,6 +464,62 @@ const PurchaseOrders = () => {
                                 )}
                             </div>
 
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 className="text-lg font-bold border-b pb-2 mb-4">4. Desconto</h3>
+                                    <div className="flex items-center gap-3">
+                                        <div className="relative flex-1">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                placeholder="0"
+                                                className="w-full p-2 border rounded-lg pr-8"
+                                                value={discountPercentage}
+                                                onChange={(e) => setDiscountPercentage(parseFloat(e.target.value) || 0)}
+                                            />
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
+                                        </div>
+                                        <div className="text-sm text-slate-500 font-medium">
+                                            Economia: R$ {(calculateSubtotal() * (discountPercentage / 100)).toFixed(2)}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-bold border-b pb-2 mb-4">5. Frete</h3>
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex gap-2">
+                                            {['Correios', 'Motoboy', 'Transportadora', 'Retirada'].map(type => (
+                                                <button
+                                                    key={type}
+                                                    type="button"
+                                                    onClick={() => setShippingType(type)}
+                                                    className={`px-3 py-1 rounded-lg border text-xs font-bold transition-all ${
+                                                        shippingType === type 
+                                                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' 
+                                                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                                                    }`}
+                                                >
+                                                    {type}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">R$</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                placeholder="0.00"
+                                                className="w-full p-2 pl-10 border rounded-lg"
+                                                value={shippingCost}
+                                                onChange={(e) => setShippingCost(parseFloat(e.target.value) || 0)}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="flex flex-col items-end gap-2 border-t pt-4">
                                 <div className="text-slate-500">Valor Total</div>
                                 <div className="text-3xl font-bold">R$ {calculateNewTotal().toFixed(2)}</div>
@@ -510,8 +597,24 @@ const PurchaseOrders = () => {
                                                 {selectedOrder.status}
                                             </span>
                                         </div>
-                                        <div className="pt-2 border-t border-emerald-200">
-                                            <p className="text-[10px] text-emerald-600 font-bold uppercase mb-1">Valor Total</p>
+                                        <div className="pt-2 border-t border-emerald-200 space-y-1">
+                                            <div className="flex justify-between text-[10px] text-emerald-600 font-bold uppercase">
+                                                <span>Subtotal</span>
+                                                <span>R$ {selectedOrder.items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0).toFixed(2)}</span>
+                                            </div>
+                                            {selectedOrder.discountPercentage && selectedOrder.discountPercentage > 0 && (
+                                                <div className="flex justify-between text-[10px] text-rose-600 font-bold uppercase">
+                                                    <span>Desconto ({selectedOrder.discountPercentage}%)</span>
+                                                    <span>- R$ {(selectedOrder.items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0) * (selectedOrder.discountPercentage / 100)).toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                            {selectedOrder.shippingCost && selectedOrder.shippingCost > 0 && (
+                                                <div className="flex justify-between text-[10px] text-emerald-600 font-bold uppercase">
+                                                    <span>Frete {selectedOrder.shippingType ? `(${selectedOrder.shippingType})` : ''}</span>
+                                                    <span>+ R$ {selectedOrder.shippingCost.toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                            <p className="text-[10px] text-emerald-600 font-bold uppercase mt-2">Valor Total</p>
                                             <p className="font-black text-emerald-700 text-3xl">R$ {selectedOrder.totalAmount.toFixed(2)}</p>
                                         </div>
                                     </div>
