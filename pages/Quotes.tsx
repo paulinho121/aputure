@@ -55,31 +55,43 @@ const Quotes = () => {
     const part = parts.find(p => p.id === partId);
     if (!part) return;
 
-    let updatedItems;
-    const existingItemIndex = selectedOrder.items.findIndex(item => item.partId === partId);
+    // Use localItems as the source of truth to avoid stale data from selectedOrder.items
+    const currentItems = [...localItems];
+    
+    // Group all items by partId to ensure no duplicates exist
+    const itemMap = new Map<string, ServiceOrderItem>();
+    
+    // Add existing items to map
+    currentItems.forEach(item => {
+      const existing = itemMap.get(item.partId);
+      if (existing) {
+        existing.quantity += item.quantity;
+      } else {
+        itemMap.set(item.partId, { ...item });
+      }
+    });
 
-    if (existingItemIndex > -1) {
-      updatedItems = [...selectedOrder.items];
-      updatedItems[existingItemIndex] = {
-        ...updatedItems[existingItemIndex],
-        quantity: updatedItems[existingItemIndex].quantity + 1
-      };
+    // Add/Increment the new part
+    const existingInMap = itemMap.get(partId);
+    if (existingInMap) {
+      existingInMap.quantity += 1;
     } else {
-      const newItem: ServiceOrderItem = {
+      itemMap.set(partId, {
         partId: part.id,
         quantity: 1,
         unitPrice: part.price
-      };
-      updatedItems = [...selectedOrder.items, newItem];
+      });
     }
+
+    const groupedItems = Array.from(itemMap.values());
 
     const updatedOrder = {
       ...selectedOrder,
-      items: updatedItems
+      items: groupedItems
     };
     
     // Update local state immediately for UI responsiveness
-    setLocalItems(updatedOrder.items);
+    setLocalItems(groupedItems);
     // Update DB
     updateOrder(updatedOrder);
     setPartSearch('');
