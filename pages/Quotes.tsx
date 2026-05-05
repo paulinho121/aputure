@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { OrderStatus, ServiceOrderItem } from '../types';
-import { FileText, Plus, Trash2, Printer, Send, CreditCard, Banknote, QrCode, Wallet, Check, Save } from 'lucide-react';
+import { FileText, Plus, Trash2, Printer, Send, CreditCard, Banknote, QrCode, Wallet, Check, Save, Sparkles } from 'lucide-react';
 
 const Quotes = () => {
   const { orders, parts, updateOrder, clients, user } = useApp();
@@ -266,6 +266,31 @@ const Quotes = () => {
     } catch (err) {
       console.error('Error saving quote:', err);
       alert('Erro ao salvar orçamento.');
+    }
+  };
+
+  const handleCleanupDuplicates = async () => {
+    if (!selectedOrder) return;
+    
+    const itemMap = new Map<string, ServiceOrderItem>();
+    
+    // Merge duplicates and reset quantity to 1 as requested
+    localItems.forEach(item => {
+      if (!itemMap.has(item.partId)) {
+        itemMap.set(item.partId, { ...item, quantity: 1 });
+      }
+    });
+
+    const cleanedItems = Array.from(itemMap.values());
+    const updatedOrder = { ...selectedOrder, items: cleanedItems };
+
+    try {
+      await updateOrder(updatedOrder);
+      setLocalItems(cleanedItems);
+      alert('Itens duplicados removidos com sucesso! Quantidade resetada para 1 unidade.');
+    } catch (err) {
+      console.error('Error cleaning duplicates:', err);
+      alert('Erro ao limpar duplicados.');
     }
   };
 
@@ -594,6 +619,12 @@ const Quotes = () => {
               <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 <button onClick={() => window.print()} className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg" title="Imprimir">
                   <Printer size={20} />
+                </button>
+                <button
+                  onClick={handleCleanupDuplicates}
+                  className="flex items-center justify-center gap-2 bg-amber-50 text-amber-700 px-4 py-2 rounded-lg hover:bg-amber-100 font-medium text-sm flex-1 sm:flex-initial border border-amber-200"
+                >
+                  <Sparkles size={16} /> Limpar Duplicatas
                 </button>
                 <button
                   onClick={handleSaveQuote}
