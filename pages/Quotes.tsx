@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { OrderStatus, ServiceOrderItem } from '../types';
-import { FileText, Plus, Trash2, Printer, Send, CreditCard, Banknote, QrCode, Wallet, Check } from 'lucide-react';
+import { FileText, Plus, Trash2, Printer, Send, CreditCard, Banknote, QrCode, Wallet, Check, Save } from 'lucide-react';
 
 const Quotes = () => {
   const { orders, parts, updateOrder, clients, user } = useApp();
@@ -234,6 +234,28 @@ const Quotes = () => {
       updateOrder({ ...selectedOrder, status });
     }
   }
+
+  const handleSaveQuote = async () => {
+    if (!selectedOrder) return;
+    
+    const updatedOrder = {
+      ...selectedOrder,
+      items: localItems,
+      laborDescription,
+      technicalReport,
+      laborCost: parseFloat(laborCostLocal) || 0,
+      shippingCost: parseFloat(shippingCostLocal) || 0,
+      discount: parseFloat(discountLocal) || 0,
+    };
+
+    try {
+      await updateOrder(updatedOrder);
+      alert('Orçamento salvo com sucesso!');
+    } catch (err) {
+      console.error('Error saving quote:', err);
+      alert('Erro ao salvar orçamento.');
+    }
+  };
 
   // Printable Component
   const PrintableQuote = ({ order, client, parts, total }: any) => {
@@ -557,9 +579,15 @@ const Quotes = () => {
                   Modelo: <span className="font-semibold text-slate-700">{selectedOrder.model}</span>
                 </p>
               </div>
-              <div className="flex gap-2 w-full sm:w-auto">
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 <button onClick={() => window.print()} className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg" title="Imprimir">
                   <Printer size={20} />
+                </button>
+                <button
+                  onClick={handleSaveQuote}
+                  className="flex items-center justify-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-200 font-medium text-sm flex-1 sm:flex-initial border border-slate-200"
+                >
+                  <Save size={16} /> Salvar
                 </button>
                 <button
                   onClick={() => handleStatusChange(OrderStatus.WAITING_APPROVAL)}
