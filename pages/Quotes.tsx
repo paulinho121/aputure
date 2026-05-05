@@ -55,16 +55,29 @@ const Quotes = () => {
     const part = parts.find(p => p.id === partId);
     if (!part) return;
 
-    const newItem: ServiceOrderItem = {
-      partId: part.id,
-      quantity: 1,
-      unitPrice: part.price
-    };
+    let updatedItems;
+    const existingItemIndex = selectedOrder.items.findIndex(item => item.partId === partId);
+
+    if (existingItemIndex > -1) {
+      updatedItems = [...selectedOrder.items];
+      updatedItems[existingItemIndex] = {
+        ...updatedItems[existingItemIndex],
+        quantity: updatedItems[existingItemIndex].quantity + 1
+      };
+    } else {
+      const newItem: ServiceOrderItem = {
+        partId: part.id,
+        quantity: 1,
+        unitPrice: part.price
+      };
+      updatedItems = [...selectedOrder.items, newItem];
+    }
 
     const updatedOrder = {
       ...selectedOrder,
-      items: [...selectedOrder.items, newItem]
+      items: updatedItems
     };
+    
     // Update local state immediately for UI responsiveness
     setLocalItems(updatedOrder.items);
     // Update DB

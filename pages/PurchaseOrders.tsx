@@ -31,14 +31,16 @@ const PurchaseOrders = () => {
         const part = parts.find(p => p.id === partId);
         if (!part) return;
 
-        const existingItem = orderItems.find(item => item.partId === partId);
-        if (existingItem) {
-            setOrderItems(orderItems.map(item =>
-                item.partId === partId ? { ...item, quantity: item.quantity + 1 } : item
-            ));
-        } else {
-            setOrderItems([...orderItems, { partId: part.id, quantity: 1, unitPrice: part.price }]);
-        }
+        setOrderItems(prev => {
+            const existingItem = prev.find(item => item.partId === partId);
+            if (existingItem) {
+                return prev.map(item =>
+                    item.partId === partId ? { ...item, quantity: item.quantity + 1 } : item
+                );
+            } else {
+                return [...prev, { partId: part.id, quantity: 1, unitPrice: part.price }];
+            }
+        });
         setPartSearch('');
         setShowPartDropdown(false);
     };
@@ -116,6 +118,24 @@ const PurchaseOrders = () => {
         if (selectedOrder?.id === order.id) {
             setSelectedOrder({ ...order, status: newStatus });
         }
+    };
+
+    const handleRemoveDetailItem = async (partId: string) => {
+        if (!selectedOrder) return;
+        const updatedItems = selectedOrder.items.filter(item => item.partId !== partId);
+        const updatedOrder = { ...selectedOrder, items: updatedItems };
+        await updatePurchaseOrder(updatedOrder);
+        setSelectedOrder(updatedOrder);
+    };
+
+    const handleUpdateDetailQty = async (partId: string, qty: number) => {
+        if (!selectedOrder) return;
+        const updatedItems = selectedOrder.items.map(item =>
+            item.partId === partId ? { ...item, quantity: qty } : item
+        );
+        const updatedOrder = { ...selectedOrder, items: updatedItems };
+        await updatePurchaseOrder(updatedOrder);
+        setSelectedOrder(updatedOrder);
     };
 
     const filteredOrders = purchaseOrders.filter(o =>
@@ -628,6 +648,7 @@ const PurchaseOrders = () => {
                                             <th className="p-3 text-left">Item</th>
                                             <th className="p-3 text-right">Qtd</th>
                                             <th className="p-3 text-right">Subtotal</th>
+                                            <th className="p-3 w-10"></th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
@@ -638,6 +659,11 @@ const PurchaseOrders = () => {
                                                     <td className="p-3">{part?.name}</td>
                                                     <td className="p-3 text-right">{item.quantity}</td>
                                                     <td className="p-3 text-right font-bold">R$ {(item.unitPrice * item.quantity).toFixed(2)}</td>
+                                                    <td className="p-3 text-center">
+                                                        <button onClick={() => { if(confirm('Remover este item da venda?')) handleRemoveDetailItem(item.partId) }} className="text-red-500 hover:text-red-700 p-1">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             );
                                         })}

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Search, Plus, AlertCircle, Filter, Package, Settings, Database, LayoutGrid, List as ListIcon, Edit2 } from 'lucide-react';
+import { Search, Plus, AlertCircle, Filter, Package, Settings, Database, LayoutGrid, List as ListIcon, Edit2, Trash2 } from 'lucide-react';
 import { Part } from '../types';
 import InventoryMaintenance from '../components/inventory/InventoryMaintenance';
 
 const Inventory = () => {
-  const { parts, addPart, updatePart, refreshParts, brands, addBrand } = useApp();
+  const { parts, addPart, updatePart, deletePart, refreshParts, brands, addBrand } = useApp();
   const [activeTab, setActiveTab] = useState<'list' | 'maintenance'>('list');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [manufacturerFilter, setManufacturerFilter] = useState<string>('all'); // Add filter state
@@ -216,12 +216,20 @@ const Inventory = () => {
                   </div>
                   <div className="bg-slate-50 px-4 py-2 border-t border-slate-100 flex justify-between items-center">
                     <span className="text-sm font-medium text-slate-600">R$ {part.price.toFixed(2)}</span>
-                    <button
-                      onClick={() => handleOpenEdit(part)}
-                      className="text-xs text-slate-500 hover:text-emerald-600 font-medium flex items-center gap-1 transition-colors"
-                    >
-                      <Edit2 size={12} /> Editar
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleOpenEdit(part)}
+                        className="text-xs text-slate-500 hover:text-emerald-600 font-medium flex items-center gap-1 transition-colors"
+                      >
+                        <Edit2 size={12} /> Editar
+                      </button>
+                      <button
+                        onClick={() => { if(confirm('Excluir esta peça definitivamente?')) deletePart(part.id) }}
+                        className="text-xs text-red-400 hover:text-red-600 font-medium flex items-center gap-1 transition-colors"
+                      >
+                        <Trash2 size={12} /> Excluir
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -261,6 +269,13 @@ const Inventory = () => {
                           title="Editar"
                         >
                           <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => { if(confirm('Excluir esta peça definitivamente?')) deletePart(part.id) }}
+                          className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       </td>
                     </tr>

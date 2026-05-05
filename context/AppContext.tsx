@@ -38,6 +38,7 @@ interface AppContextType {
   addPurchaseOrder: (order: PurchaseOrder) => Promise<void>;
   updatePurchaseOrder: (order: PurchaseOrder) => Promise<void>;
   deletePurchaseOrder: (orderId: string) => Promise<void>;
+  deletePart: (partId: string) => Promise<void>;
   settings: Settings | null;
   updateSettings: (settings: Partial<Settings>) => Promise<void>;
 }
@@ -1061,6 +1062,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const deletePart = async (partId: string) => {
+    try {
+      const { error } = await supabase.from('parts').delete().eq('id', partId);
+      if (error) throw error;
+      setParts(parts.filter(p => p.id !== partId));
+    } catch (err: any) {
+      console.error('Error deleting part:', err);
+      alert('Erro ao excluir peça: ' + err.message);
+    }
+  };
+
   const deleteOrder = async (orderId: string) => {
     try {
       // Delete order items first (though cascade might handle it)
@@ -1103,6 +1115,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       clients, addClient, updateClient,
       orders, addOrder, updateOrder, deleteOrder,
       purchaseOrders, addPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder,
+      deletePart,
       settings, updateSettings
     }}>
       {children}
